@@ -72,7 +72,7 @@ export function Nav() {
           href="/"
           className="font-mono text-xs font-medium tracking-[0.16em] text-[hsl(var(--fg-secondary))] uppercase"
         >
-          Console
+          SwordOffice
         </Link>
         <button
           className="dense p-2"
@@ -109,7 +109,7 @@ export function Nav() {
               href="/"
               className="font-mono text-xs font-medium tracking-[0.18em] text-[hsl(var(--fg-secondary))] uppercase"
             >
-              Console
+              SwordOffice
             </Link>
           )}
           {collapsed && (
@@ -141,7 +141,7 @@ export function Nav() {
               onClick={() => setOpen(false)}
               className="font-mono text-xs font-medium tracking-[0.18em] text-[hsl(var(--fg-secondary))] uppercase"
             >
-              Console
+              SwordOffice
             </Link>
             <button onClick={() => setOpen(false)} className="dense p-1" aria-label="Close">
               <X className="h-4 w-4" />

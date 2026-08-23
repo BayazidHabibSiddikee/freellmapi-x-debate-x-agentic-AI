@@ -1,4 +1,4 @@
-# ❓ HELP — FreeLLMAPI × Debate × Agentic AI
+# SwordOffice — Help & Operations Manual
 
 Everything you need to run and use the platform. See **GOAL.md** for the "why".
 
@@ -145,7 +145,18 @@ dispatch is journaled there.
 
 ---
 
-## 7. Repo map
+## 7. What framework is used? (LangChain / LangGraph / LangSmith?)
+
+| Library | Used? | Where |
+|---|---|---|
+| **LangChain** | ✅ Yes | `services/debate/` — `ChatOpenAI` for character turns, HuggingFace embeddings, FAISS vectorstore, text splitters |
+| **rank-bm25 + faiss-cpu** | ✅ Yes | the hybrid retrieval itself (BM25 sparse + dense vectors fused via RRF) |
+| **FastAPI** | ✅ Yes | debate (:5050), RAG (:5080), agent tools (:5090) servers |
+| **Express / React / Next.js** | ✅ Yes | FreeLLM proxy+dashboard; agentic-os console incl. Business |
+| **LangGraph** | ❌ No | Only the original Marin project used a LangGraph state machine; this monorepo uses a simpler direct call flow (route → prompt → proxy → persona) |
+| **LangSmith** | ❌ No | Installed only as a transitive dependency of LangChain. No tracing key is set; if you ever export `LANGCHAIN_TRACING_V2=true` it would start uploading traces — don't unless you want that |
+
+## 8. Repo map
 
 ```
 server/ client/     FreeLLM API proxy + dashboard (Express + React)

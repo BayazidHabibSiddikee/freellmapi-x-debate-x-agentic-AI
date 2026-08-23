@@ -215,7 +215,129 @@ def code_task(prompt: str, cwd: str = ".", agent: Optional[str] = None,
     }
 
 
-# ── Registry ──────────────────────────────────────────────────────────────────
+def verify_output(path: str = ".", checks: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Verify output artifacts exist and are non-empty after a coding task.
+
+    Walks the workspace for expected files (README.md, dist/, build/, coverage/ etc.)
+    and returns a pass/fail summary. Useful for post-dispatch quality gates.
+    """
+    root = _safe_under_home(path)
+    default_checks = [
+        "**/*.md", "*.json", "package.json", "pyproject.toml",
+        "dist/**", "build/**", "coverage/**", ".github/**",
+        "tests/**/*.py", "test/**/*.ts", "src/**/*.js",
+    ]
+    patterns = checks or default_checks
+    found: List[Dict[str, Any]] = []
+    total_files = 0
+    for pat in patterns:
+        for f in sorted(root.glob(pat)):
+            if not f.is_file():
+                continue
+            total_files += 1
+            try:
+                sz = f.stat().st_size
+                found.append({"file": str(f.relative_to(root)), "size_bytes": sz})
+            except OSError:
+                found.append({"file": str(f.relative_to(root)), "size_bytes": 0, "error": "read-failed"})
+    return {
+        "root": str(root),
+        "total_files_found": total_files,
+        "patterns_matched": len(patterns),
+        "samples": found[:30],
+    }
+
+
+def run_tests(
+    cwd: str = ".",
+    framework: Optional[str] = None,
+    args: Optional[List[str]] = None,
+    timeout_seconds: int = 120,
+) -> Dict[str, Any]:
+    """Run a test suite in the given project folder and return results.
+
+    Auto-detects framework from project files when `framework` is omitted:
+      - package.json with jest/mocha/vitest → npm test or npx <runner>
+      - pyproject.toml / setup.cfg / tox.ini → pytest
+      - Makefile with test target → make test
+      - fall back to a simple glob for *test*.* files
+    """
+    root = Path(_safe_under_home(cwd))
+    detected = framework or _detect_framework(root)
+    commands = _test_commands(detected, args or [])
+
+    results: List[Dict[str, Any]] = []
+    for cmd in commands:
+        try:
+            proc = subprocess.run(
+                cmd, cwd=str(root), capture_output=True, text=True,
+                timeout=max(15, min(timeout_seconds, 600)),
+            )
+            results.append({
+                "command": " ".join(cmd),
+                "exit_code": proc.returncode,
+                "stdout": (proc.stdout or "")[-2000:],
+                "stderr": (proc.stderr or "")[-1000:] if proc.returncode else "",
+                "ok": proc.returncode == 0,
+            })
+        except subprocess.TimeoutExpired:
+            results.append({"command": " ".join(cmd), "ok": False,
+                             "error": f"timeout after {timeout_seconds}s"})
+        except Exception as e:  # noqa: BLE001
+            results.append({"command": " ".join(cmd), "ok": False,
+                             "error": str(e)[:300]})
+
+    all_ok = all(r.get("ok") for r in results) if results else False
+    return {
+        "cwd": str(root),
+        "framework_detected": detected,
+        "runs": results,
+        "all_passed": all_ok,
+    }
+
+
+def _detect_framework(root: Path) -> str:
+    has_py = any(root.glob("**/*.py"))
+    has_js = any(root.glob("**/*.{js,ts,jsx,tsx}"))
+    pkg = root / "package.json"
+    pyproj = root / "pyproject.toml"
+    tox = root / "tox.ini"
+    setup = root / "setup.cfg"
+    makefile = root / "Makefile"
+    if (pkg.exists() and pkg.read_text()[:5000].find("jest") != -1):
+        return "jest"
+    if (pkg.exists() and pkg.read_text()[:5000].find("vitest") != -1):
+        return "vitest"
+    if (pkg.exists() and pkg.read_text()[:5000].find("mocha") != -1):
+        return "mocha"
+    if has_py and (pyproj.exists() or tox.exists() or setup.exists()):
+        return "pytest"
+    if makefile.exists():
+        return "make"
+    if has_py:
+        return "pytest"
+    if has_js:
+        return "npm-test"
+    return "none"
+
+
+def _test_commands(framework: str, extra_args: List[str]) -> List[List[str]]:
+    if framework == "pytest":
+        cmds = [["python", "-m", "pytest", *extra_args]]
+        if shutil.which("uv"):
+            cmds.append(["uv", "run", "pytest", *extra_args])
+        return cmds
+    if framework == "jest":
+        return [["npx", "jest", *extra_args]]
+    if framework == "vitest":
+        return [["npx", "vitest", "run", *extra_args]]
+    if framework == "mocha":
+        return [["npx", "mocha", *extra_args]]
+    if framework == "make":
+        return [["make", "test", *(f"EXTRA={a}" for a in extra_args)]]
+    if framework == "npm-test":
+        return [["npm", "test", "--", *extra_args]] if extra_args else [["npm", "test"]]
+    return []
 
 ToolFunc = Callable[..., Dict[str, Any]]
 
@@ -287,6 +409,37 @@ TOOLS: Dict[str, Dict[str, Any]] = {
         },
         "roles": {"Researcher", "PM", "Judge", "Analyst", "CTO", "Security", "Reviewer", "Writer"},
         "func": read_pdf,
+    },
+    "run_tests": {
+        "description": (
+            "Run the project's test suite and return pass/fail results. "
+            "Auto-detects pytest / jest / vitest / mocha / make. DevOps and Engineers only."
+        ),
+        "args": {
+            "cwd": {"type": "string", "required": False, "default": ".",
+                     "desc": "Project folder under ~"},
+            "framework": {"type": "string", "required": False, "default": None,
+                           "desc": "'pytest' | 'jest' | 'vitest' | 'mocha' | 'make' | auto-detect"},
+            "args": {"type": "array", "items": "string", "required": False, "default": [],
+                      "desc": "Extra args forwarded to the test runner (e.g. ['-k', 'test_auth'])"},
+            "timeout_seconds": {"type": "integer", "required": False, "default": 120},
+        },
+        "roles": {"Engineer", "DevOps", "Reviewer"},
+        "func": run_tests,
+    },
+    "verify_output": {
+        "description": (
+            "Post-task verification: scan the project for expected output artifacts "
+            "(docs, dist/, tests/, configs) and report what exists. QA gate after dispatch."
+        ),
+        "args": {
+            "path": {"type": "string", "required": False, "default": ".",
+                      "desc": "Project folder under ~"},
+            "checks": {"type": "array", "items": "string", "required": False, "default": None,
+                        "desc": "Glob patterns to look for (e.g. ['README.md', 'dist/**', 'tests/**/*.py'])"},
+        },
+        "roles": {"Engineer", "Reviewer", "DevOps", "Analyst"},
+        "func": verify_output,
     },
     "code_task": {
         "description": (

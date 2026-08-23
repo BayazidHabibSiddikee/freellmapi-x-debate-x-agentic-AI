@@ -19,8 +19,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Console — Agentic OS",
-  description: "Your AI C-suite. On your machine. Yours to keep.",
+  title: "SwordOffice — Console",
+  description: "SwordOffice — your local-first AI team.",
   icons: { icon: "/favicon.ico" },
 };
 

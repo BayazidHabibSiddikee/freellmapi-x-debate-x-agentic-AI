@@ -48,7 +48,7 @@ export function TopBar() {
     <div className="hidden md:flex h-12 items-center justify-between border-b border-[hsl(var(--border-default))] px-6 dense">
       <div className="flex items-center gap-1.5 text-xs">
         <Link href="/" className="text-[hsl(var(--fg-dim))] hover:text-[hsl(var(--fg-secondary))] transition-colors">
-          Console
+          SwordOffice
         </Link>
         {trail.map((label, i) => (
           <span key={i} className="flex items-center gap-1.5">

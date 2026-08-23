@@ -1,17 +1,12 @@
 <div align="center">
 
-# FreeLLMAPI
+# SwordOffice
 
-**One OpenAI-compatible endpoint. Sixteen free LLM providers. ~1.7B tokens per month.**
-
-Aggregate the free tiers from Google, Groq, Cerebras, NVIDIA, Mistral, OpenRouter, GitHub Models, Cohere, Cloudflare, HuggingFace, Z.ai (Zhipu), Ollama, Kilo, Pollinations, LLM7, OVH AI Endpoints, and OpenCode Zen — plus any custom OpenAI-compatible endpoint (llama.cpp, LM Studio, vLLM, local Ollama) — behind a single `/v1/chat/completions` endpoint. Keys are stored encrypted. A router picks the best available model for each request, falls over to the next provider when one is rate-limited, and tracks per-key usage so you stay under every free-tier cap.
-
-[![CI](https://github.com/tashfeenahmed/freellmapi/actions/workflows/ci.yml/badge.svg)](https://github.com/tashfeenahmed/freellmapi/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
-[![Docker image](https://img.shields.io/badge/ghcr.io-freellmapi-2496ED?logo=docker&logoColor=white)](https://github.com/tashfeenahmed/freellmapi/pkgs/container/freellmapi)
-
-**[freellmapi.co](https://freellmapi.co)** — browse the live model catalog
+**Your local-first AI company.** A team of AI characters — CTO, PM, Engineers,
+Researchers, Judge — who debate your goals, ground them in your own knowledge
+base, distill verdicts into task specs, and dispatch them to coding agents
+(claude / opencode). One OpenAI-compatible endpoint routes 16+ free LLM
+providers behind it all.
 
 > **📖 Read this first:** [GOAL.md](./GOAL.md) — what this project is and why it exists ·
 > [BENCHMARK.md](./BENCHMARK.md) — rated vs MetaGPT/CrewAI/OpenHands/raw Claude + runnable micro-bench ·
@@ -19,7 +14,27 @@ Aggregate the free tiers from Google, Groq, Cerebras, NVIDIA, Mistral, OpenRoute
 
 ---
 
-# 🏢 Monorepo: FreeLLMAPI × Debate × Agentic AI
+## 🙏 Built on the shoulders of four projects
+
+SwordOffice is a single-maintainer product assembled from these projects —
+each contributing a load-bearing part. All credit for those parts belongs to
+their authors.
+
+| Project | Author | Contribution to SwordOffice |
+|---|---|---|
+| **[FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi)** | tashfeenahmed | The foundation: the Express 5 + TypeScript proxy aggregating 16+ free LLM providers, encrypted key vault, router with rate-limit failover, dashboard/playground UI, and the server/client/docs skeleton everything else is built on |
+| **[AI_Debate](https://github.com/BayazidHabibSiddikee/AI_Debate)** | BayazidHabibSiddikee | The soul: 18 SillyTavern characters and the debate engine concept; the RAG server design (FAISS + MiniLM) that grew into our hybrid BM25+embeddings knowledge base |
+| **[agentic-os](https://github.com/aporb/agentic-os)** | aporb | The cockpit: the Next.js console (vault, skills, wiki, automations patterns) that became the Business surface where you configure and command your AI team |
+| **[Marin](https://github.com/BayazidHabibSiddikee/Marin_Kitagawa_v3)** | BayazidHabibSiddikee | The blueprint: the LangGraph tool-calling loop (strategist → auditor → executor → persona), learn-workflow (download → ingest → RAG), and persona system whose patterns were re-implemented in `services/agent/` |
+
+Everything else — hybrid RAG fusion, role gates, judge→dispatch pipeline,
+Telegram bridge, per-persona files, projects — was built new, on top of
+these four.
+
+---
+
+
+# 🏢 SwordOffice — Project Overview
 
 A single workspace merging **five** previously separate projects:
 

@@ -1,4 +1,4 @@
-# 🎯 Project Goal
+# 🎯 SwordOffice — Project Goal
 
 ## The problem
 

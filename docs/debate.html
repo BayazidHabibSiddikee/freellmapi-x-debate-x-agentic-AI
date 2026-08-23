@@ -365,16 +365,27 @@
 <link rel="stylesheet" href="/theme.css" />
 </head>
 <body>
-<div id="xnav">
-  <a class="brand" href="/">FreeLLM·AI</a>
-  <a class="xlink" href="/playground">Playground</a><a class="xlink" href="/personal">Personal</a><a class="xlink" href="/knowledge">Knowledge</a><a class="xlink" href="/business">Business</a>
-  <span class="spacer"></span>
-  <a class="xlink" href="http://localhost:18443/business">Business Console ↗</a>
-</div>
+<aside id="xsid">
+  <a class="brand" href="/">Sword<span>Office</span></a>
+  <div class="group">Workspace</div>
+  <a class="xlink" href="http://localhost:3001/playground">Playground</a>
+  <a class="xlink" href="http://localhost:3001/debate">Debate</a>
+  <a class="xlink" href="http://localhost:3001/personal">Personal</a>
+  <a class="xlink" href="http://localhost:3001/knowledge">Knowledge</a>
+  <a class="xlink" href="http://localhost:3001/business">Business</a>
+  <div class="group">Configure</div>
+  <a class="xlink ext" href="http://localhost:18443/business">AI Team</a>
+  <a class="xlink" href="http://localhost:3001/keys">API Keys</a>
+  <a class="xlink" href="http://localhost:3001/models">Models</a>
+  <a class="xlink" href="http://localhost:3001/fallback">Fallbacks</a>
+  <a class="xlink" href="http://localhost:3001/analytics">Analytics</a>
+  <a class="xlink ext" href="http://localhost:18443/settings">Settings</a>
+  <div class="foot">local-first AI team</div>
+</aside>
 <script>
 (function(){
   var here = location.pathname;
-  document.querySelectorAll('#xnav a.xlink').forEach(function(a){
+  document.querySelectorAll('#xsid a.xlink').forEach(function(a){
     if (a.getAttribute('href') === here) a.classList.add('current');
   });
 })();
