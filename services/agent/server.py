@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from tools_registry import execute, list_tools, report, ToolError
 from dispatcher import judge_spec, dispatch_spec
+from activity import log_event
 
 app = FastAPI(title="Business Agent Tools", version="1.0")
 
@@ -49,10 +50,13 @@ async def tools(role: Optional[str] = None):
 async def run_tool(req: ExecuteRequest):
     try:
         result = await asyncio.to_thread(execute, req.tool, req.args, req.role)
+        log_event("tool", tool=req.tool, role=req.role, ok=True)
         return {"ok": True, "tool": req.tool, "role": req.role, "result": result}
     except ToolError as e:
+        log_event("tool", tool=req.tool, role=req.role, ok=False, error=str(e))
         return {"ok": False, "tool": req.tool, "error": str(e), "kind": "validation"}
     except Exception as e:  # noqa: BLE001 — surface remote/tool failures to caller
+        log_event("tool", tool=req.tool, role=req.role, ok=False, error=str(e)[:300])
         return {"ok": False, "tool": req.tool, "error": str(e)[:500], "kind": "execution"}
 
 
@@ -66,6 +70,7 @@ async def get_report():
 class JudgeRequest(BaseModel):
     topic: str
     history: list = []
+    workspaces: dict = {}   # role -> workspace path hints
 
 
 class DispatchRequest(BaseModel):
@@ -76,7 +81,9 @@ class DispatchRequest(BaseModel):
 @app.post("/judge")
 async def judge(req: JudgeRequest):
     try:
-        spec = await asyncio.to_thread(judge_spec, req.topic, req.history)
+        spec = await asyncio.to_thread(judge_spec, req.topic, req.history, req.workspaces)
+        log_event("judge", topic=req.topic[:200],
+                  subtasks=[t["id"] for t in spec.get("subtasks", [])])
         return {"ok": True, "spec": spec}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)[:500]}
@@ -86,6 +93,8 @@ async def judge(req: JudgeRequest):
 async def dispatch(req: DispatchRequest):
     try:
         result = await asyncio.to_thread(dispatch_spec, req.spec, req.only or None)
+        log_event("dispatch", goal=str(req.spec.get("goal", ""))[:200],
+                  summary=result.get("summary"))
         return {"ok": True, **result}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)[:500]}

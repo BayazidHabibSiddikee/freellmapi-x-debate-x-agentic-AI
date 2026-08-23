@@ -139,7 +139,7 @@ TOOLS: Dict[str, Dict[str, Any]] = {
             "study": {"type": "boolean", "required": False, "default": True,
                        "desc": "Ingest downloads into RAG"},
         },
-        "roles": {"Researcher", "CTO", "Developer"},
+        "roles": {"Researcher", "CTO", "Engineer"},
         "func": download_books,
     },
     "study": {
@@ -149,7 +149,7 @@ TOOLS: Dict[str, Dict[str, Any]] = {
             "k": {"type": "integer", "required": False, "default": 6},
             "source_type": {"type": "string", "required": False, "default": None},
         },
-        "roles": {"Researcher", "CTO", "PM", "Judge", "Developer"},
+        "roles": {"Researcher", "CTO", "PM", "Judge", "Engineer", "Analyst"},
         "func": study,
     },
     "youtube_transcript": {
@@ -158,7 +158,7 @@ TOOLS: Dict[str, Dict[str, Any]] = {
             "url_or_text": {"type": "string", "required": True,
                              "desc": "YouTube URL or text containing one"},
         },
-        "roles": {"Researcher", "CTO", "Developer"},
+        "roles": {"Researcher", "CTO", "Engineer"},
         "func": youtube_transcript_tool,
     },
     "web_search": {

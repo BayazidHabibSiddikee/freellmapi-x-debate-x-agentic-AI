@@ -17,26 +17,27 @@ Aggregate the free tiers from Google, Groq, Cerebras, NVIDIA, Mistral, OpenRoute
 
 # 🏢 Monorepo: FreeLLMAPI × Debate × Agentic AI
 
-This repository is a unified workspace combining four projects:
+A single workspace merging **five** previously separate projects:
 
-| Path | What it is | Port |
-|------|------------|------|
-| `server/` + `client/` | **FreeLLM API** — OpenAI-compatible proxy across 16+ free providers; also hosts debate/business routes | 3001 |
-| `console/` | **Agentic OS Console** (Next.js) — includes the **Business** surface for role-based AI teams | 18443 |
-| `services/debate/` | **Debate Simulator + Hybrid RAG server** — 18 characters, FAISS embeddings fused with BM25 via Reciprocal Rank Fusion | 5050 / 5080 |
-| `services/agent/` | **Agent tools & dispatcher** — role-gated tool registry (download books → ingest → study) and judge→subtask→CLI dispatch to `claude`/`opencode` | 5090 |
-| `tools/` | Python tool library (pdf_downloader, stealth_browser, youtube_transcript, …) | — |
+| Path | Merged from | What it is | Port |
+|------|-------------|------------|------|
+| `server/` + `client/` | [tashfeenahmed/freellmapi](https://github.com/tashfeenahmed/freellmapi) (+ local debate/business routes) | **FreeLLM API** — OpenAI-compatible proxy across 16+ free providers; dashboard, playground, keys, rate limits | 3001 |
+| `console/` | [aporb/agentic-os](https://github.com/aporb/agentic-os) | **Agentic OS Console** (Next.js 15) — vault, skills, wiki, automations, insights + the new **Business** surface | 18443 |
+| `services/debate/` | [BayazidHabibSiddikee/AI_Debate](https://github.com/BayazidHabibSiddikee/AI_Debate) | **Debate Simulator** (18 SillyTavern characters) + **Hybrid RAG server** (BM25 + FAISS embeddings fused via RRF) | 5050 / 5080 |
+| `tools/` | [BayazidHabibSiddikee/Tools](https://github.com/BayazidHabibSiddikee/Tools) | Python tool library: pdf_downloader, stealth_browser, youtube_transcript, knowledge_hub, doc_tools, … | — |
+| `services/agent/` | *new* — pattern derived from Marin's LangGraph tool-calling loop | **Agent tools & dispatcher**: role-gated tool registry, judge→task-spec→CLI dispatch, activity log | 5090 |
 
 ## The core idea
 
 > AI coding agents make mistakes when given vague instructions. Instead:
 > **characters debate → judge distills a task spec → coding agents execute with precise prompts**, grounded by a hybrid RAG knowledge base.
 
-1. Assign your AI characters to company roles in the console's **Business** page (`/business`) — CTO, PM, Judge, Researcher, Developer. Each role layers its mandate on top of the character's persona.
-2. Debate a goal in the working session. Context is injected from the hybrid RAG (BM25 + embeddings, RRF-fused).
-3. The **Researcher** can download books/PDFs from the web (`tools/pdf_downloader.py`) which are auto-ingested into the knowledge base, then cited in debates.
-4. Hit **Judge**: the transcript becomes a structured JSON task spec (goal, decisions, subtasks).
-5. Hit **Dispatch**: each subtask runs headlessly through `claude -p` or `opencode run` in its target repo. Results feed back into the session for team review.
+1. **Build your team** on `/business`: assign characters to roles — CTO, PM, Judge, Researcher, Engineer, Analyst. A role can hold **multiple characters** (round-robined per turn); each role can pin a **workspace directory anywhere under `~/`** where its dispatched work happens.
+2. **38 characters total**: the original 18 SillyTavern cards plus 20 purpose-built personas — first-principles visionaries (Nova Vance), customer-obsessed operators (Sterling Cole), kernel pragmatists (Linus Wolf), SRE purists, security engineers, TDD perfectionists, research librarians, risk auditors, a Socratic devil's advocate, and more.
+3. **Debate** a goal; every turn is grounded by hybrid RAG (BM25 lexical + dense embeddings, Reciprocal Rank Fusion).
+4. **Researcher flow**: download books/PDFs from the web → auto-ingest into the knowledge base → cited in later debates.
+5. **Judge** distills the transcript into a JSON task spec (goal, decisions, subtasks with agent + cwd). Role workspaces are passed as hints.
+6. **Dispatch** runs each subtask headlessly through `claude -p` / `opencode run`. Workspaces are validated to stay under `$HOME`. Results feed back into the session for review.
 
 ## Quick start
 
@@ -48,7 +49,17 @@ This repository is a unified workspace combining four projects:
 
 Then open **http://localhost:18443/business**.
 
-### Configuration (env)
+### Business configuration surface
+
+| What | Where |
+|------|-------|
+| Role members & workspaces | UI Roles card → `config/business/roles.json` |
+| Model, temperature, max tokens, history depth, RAG k, default dispatch agent, timeouts, file-write permission | UI Settings card → `config/business/settings.json` |
+| Custom characters | `config/business/custom_characters.json` (merged over the base roster) |
+| Logs viewer | UI Logs card (`activity.jsonl`, agent/rag/debate/console logs) |
+| Structured activity journal | `logs/activity.jsonl` — every tool run, judge call, dispatch |
+
+### Environment variables
 
 - `RAG_SERVER_URL` (default `http://localhost:5080`)
 - `AGENT_TOOLS_URL` (default `http://localhost:5090`)
@@ -56,9 +67,8 @@ Then open **http://localhost:18443/business**.
 - `CLAUDE_FLAGS` — e.g. `--permission-mode acceptEdits` to let dispatched tasks write files
 - `DISPATCH_TIMEOUT` — seconds per subtask (default 900)
 
-Role assignments persist in `config/business/roles.json`. Character roster lives in `services/debate/characters.json`.
-
 ---
+
 
 ![Fallback chain with per-provider token budget](repo-assets/fallback-chain.png)
 

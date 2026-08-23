@@ -25,6 +25,10 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from activity import log_event
+
+HOME = Path.home()
+
 FREELLM_BASE = os.environ.get("FREELLM_API_BASE", "http://localhost:3001/v1")
 JUDGE_MODEL = os.environ.get("JUDGE_MODEL", os.environ.get("FREELLM_MODEL", "auto"))
 DISPATCH_TIMEOUT = int(os.environ.get("DISPATCH_TIMEOUT", "900"))
@@ -110,11 +114,18 @@ def _parse_json(text: str) -> Dict[str, Any]:
 
 # ── Judge ─────────────────────────────────────────────────────────────────────
 
-def judge_spec(topic: str, history: List[Dict[str, str]]) -> Dict[str, Any]:
+def judge_spec(topic: str, history: List[Dict[str, str]],
+               workspaces: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     transcript = "\n".join(f"{t['speaker']}: {t['text']}" for t in history[-20:])
+    ws_hint = ""
+    if workspaces:
+        ws_hint = (
+            "\n\nKnown team workspace directories (prefer these for subtask \"cwd\"):\n"
+            + "\n".join(f"- {k}: {v}" for k, v in workspaces.items() if v)
+        )
     raw = _llm(
         [
-            {"role": "system", "content": JUDGE_SYSTEM},
+            {"role": "system", "content": JUDGE_SYSTEM + ws_hint},
             {"role": "user",
              "content": f"Topic: {topic}\n\nDebate transcript:\n{transcript}"},
         ],
@@ -158,37 +169,67 @@ def _cli_for(agent: str) -> Optional[List[str]]:
     return None
 
 
+def _load_business_settings() -> Dict[str, Any]:
+    """Read config/business/settings.json (written by the console)."""
+    path = Path(__file__).resolve().parents[2] / "config" / "business" / "settings.json"
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def resolve_workspace(path: str) -> str:
+    """Expand ~ and enforce the path stays under $HOME."""
+    expanded = Path(os.path.expanduser(path)).resolve()
+    if expanded != HOME and HOME not in expanded.parents:
+        raise ValueError(f"workspace must be under {HOME}")
+    return str(expanded)
+
+
 def dispatch_subtask(task: Dict[str, Any]) -> Dict[str, Any]:
-    agent = task.get("agent", "claude")
+    agent = task.get("agent") or _load_business_settings().get(
+        "dispatch_agent_default", "claude"
+    )
     argv = _cli_for(agent)
     if argv is None:
         return {**task, "status": "failed",
                 "error": f"'{agent}' CLI not found on PATH"}
 
-    cwd = task.get("cwd") or "."
+    try:
+        raw_cwd = task.get("cwd") or "."
+        cwd = resolve_workspace(raw_cwd)
+    except ValueError as e:
+        return {**task, "status": "failed", "error": str(e)}
     if not Path(cwd).is_dir():
         return {**task, "status": "failed", "error": f"cwd does not exist: {cwd}"}
 
+    timeout = int(_load_business_settings().get("dispatch_timeout_seconds", DISPATCH_TIMEOUT))
+    log_event("dispatch_task", id=task.get("id"), agent=agent, cwd=cwd)
     try:
         proc = subprocess.run(
             [*argv, task["prompt"]],
             cwd=cwd,
             capture_output=True,
             text=True,
-            timeout=DISPATCH_TIMEOUT,
+            timeout=timeout,
         )
         ok = proc.returncode == 0
-        return {
+        result = {
             **task,
             "status": "done" if ok else "failed",
             "exit_code": proc.returncode,
             "output": (proc.stdout or "")[-4000:],
             "error": (proc.stderr or "")[-1000:] if not ok else "",
         }
+        log_event("dispatch_task", id=task.get("id"), status=result["status"])
+        return result
     except subprocess.TimeoutExpired:
+        log_event("dispatch_task", id=task.get("id"), status="timeout")
         return {**task, "status": "timeout",
-                "error": f"exceeded {DISPATCH_TIMEOUT}s"}
+                "error": f"exceeded {timeout}s"}
     except Exception as e:  # noqa: BLE001
+        log_event("dispatch_task", id=task.get("id"), status="failed", error=str(e)[:300])
         return {**task, "status": "failed", "error": str(e)[:500]}
 
 

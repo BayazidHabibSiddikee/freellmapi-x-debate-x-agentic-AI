@@ -6,59 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Briefcase, Loader2, Send, RefreshCw, Gavel, Rocket } from "lucide-react";
+import { Avatar, tokenQS, type Character } from "./avatar";
+import { RolesCard, type RoleConfig } from "./roles-card";
+import { LogsCard } from "./logs-card";
+import { SettingsCard, type Settings } from "./settings-card";
 
-type Character = {
-  id: string;
-  name: string;
-  image?: string;
-  system_prompt?: string;
-};
-
+type Turn = { speaker: string; role?: string; text: string; used_rag?: boolean };
 type Roster = {
   characters: Character[];
-  roles: Record<string, string | null>;
+  roles: Record<string, RoleConfig>;
   role_list: string[];
+  settings: Settings;
 };
-
-type Turn = {
-  speaker: string;
-  role?: string;
-  text: string;
-  used_rag?: boolean;
-};
-
-function Avatar({ name, id }: { name: string; id?: string }) {
-  const [failed, setFailed] = useState(false);
-  if (failed || !id) {
-    return (
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-xs">
-        {name.slice(0, 2).toUpperCase()}
-      </div>
-    );
-  }
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`/api/business/avatar/${encodeURIComponent(id)}.card.png?t=${tokenQS()}`}
-      alt={name}
-      onError={() => setFailed(true)}
-      className="h-10 w-10 shrink-0 rounded-full object-cover"
-    />
-  );
-}
-
-let _t: string | null = null;
-function tokenQS() {
-  if (_t === null) {
-    const m = typeof window !== "undefined" ? window.location.search.match(/[?&]t=([a-f0-9]+)/) : null;
-    _t = m ? m[1] : "";
-    if (!_t && typeof document !== "undefined") {
-      const c = document.cookie.match(/agentic_os_token=([a-f0-9]+)/);
-      _t = c ? c[1] : "";
-    }
-  }
-  return encodeURIComponent(_t);
-}
 
 export default function BusinessPage() {
   const [roster, setRoster] = useState<Roster | null>(null);
@@ -71,44 +30,13 @@ export default function BusinessPage() {
   const [toolBusy, setToolBusy] = useState(false);
   const [toolResult, setToolResult] = useState<string | null>(null);
   const [toolError, setToolError] = useState<string | null>(null);
-  const [spec, setSpec] = useState<{ goal?: string; subtasks?: Array<Record<string, unknown>> } | null>(null);
+  const [spec, setSpec] = useState<{
+    goal?: string;
+    subtasks?: Array<Record<string, unknown>>;
+  } | null>(null);
   const [judgeBusy, setJudgeBusy] = useState(false);
   const [dispatchResult, setDispatchResult] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  const activeRoles0 = roster?.role_list.filter((r) => roster.roles[r]) ?? [];
-
-  // Load tools for the first active role
-  useEffect(() => {
-    if (activeRoles0.length === 0) return;
-    fetch(`/api/business/tools?role=${encodeURIComponent(activeRoles0[0])}&t=${tokenQS()}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setToolsForRole(d?.tools ?? {}))
-      .catch(() => setToolsForRole({}));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roster]);
-
-  async function runTool() {
-    if (!toolName) return;
-    setToolBusy(true);
-    setToolError(null);
-    setToolResult(null);
-    try {
-      const role = activeRoles0[0];
-      const res = await fetch(`/api/business/tool-run?t=${tokenQS()}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: toolName, args: {}, role }),
-      });
-      const data = await res.json();
-      if (!res.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${res.status}`);
-      setToolResult(JSON.stringify(data.result, null, 2).slice(0, 4000));
-    } catch (e) {
-      setToolError(e instanceof Error ? e.message : "tool failed");
-    } finally {
-      setToolBusy(false);
-    }
-  }
 
   const load = useCallback(() => {
     fetch(`/api/business/roster?t=${tokenQS()}`)
@@ -122,13 +50,39 @@ export default function BusinessPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, busyRole]);
 
-  async function assign(role: string, characterId: string | null) {
-    await fetch(`/api/business/assign?t=${tokenQS()}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, character_id: characterId }),
-    });
-    load();
+  const roles = roster?.roles ?? {};
+  const activeRoles =
+    roster?.role_list.filter((r) => (roles[r]?.members?.length ?? 0) > 0) ?? [];
+  const firstActiveRole = activeRoles[0];
+
+  // Load tools for the first active role
+  useEffect(() => {
+    if (!firstActiveRole) return;
+    fetch(`/api/business/tools?role=${encodeURIComponent(firstActiveRole)}&t=${tokenQS()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setToolsForRole(d?.tools ?? {}))
+      .catch(() => setToolsForRole({}));
+  }, [firstActiveRole, roster]);
+
+  async function runTool() {
+    if (!toolName || !firstActiveRole) return;
+    setToolBusy(true);
+    setToolError(null);
+    setToolResult(null);
+    try {
+      const res = await fetch(`/api/business/tool-run?t=${tokenQS()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: toolName, args: {}, role: firstActiveRole }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setToolResult(JSON.stringify(data.result, null, 2).slice(0, 4000));
+    } catch (e) {
+      setToolError(e instanceof Error ? e.message : "tool failed");
+    } finally {
+      setToolBusy(false);
+    }
   }
 
   async function speak(role?: string) {
@@ -184,15 +138,23 @@ export default function BusinessPage() {
       });
       const data = await res.json();
       if (!res.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${res.status}`);
-      setDispatchResult(JSON.stringify(data.summary) + "\n\n" + (data.results ?? []).map(
-        (r: { id?: string; status?: string; output?: string }) =>
-          `${r.id}: ${r.status}${r.output ? `\n${String(r.output).slice(0, 400)}` : ""}`,
-      ).join("\n\n"));
-      // Feed results back into the session for team review
-      setHistory((h) => [...h, {
-        speaker: "Dispatcher",
-        text: `Subtasks executed. Summary: ${JSON.stringify(data.summary)}. Review outputs above.`,
-      }]);
+      setDispatchResult(
+        JSON.stringify(data.summary) +
+          "\n\n" +
+          (data.results ?? [])
+            .map(
+              (r: { id?: string; status?: string; output?: string }) =>
+                `${r.id}: ${r.status}${r.output ? `\n${String(r.output).slice(0, 400)}` : ""}`,
+            )
+            .join("\n\n"),
+      );
+      setHistory((h) => [
+        ...h,
+        {
+          speaker: "Dispatcher",
+          text: `Subtasks executed. Summary: ${JSON.stringify(data.summary)}. Review outputs above.`,
+        },
+      ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "dispatch failed");
     } finally {
@@ -208,8 +170,7 @@ export default function BusinessPage() {
     );
   }
 
-  const charById = Object.fromEntries(roster.characters.map((c) => [c.id, c]));
-  const activeRoles = roster.role_list.filter((r) => roster.roles[r]);
+  const charByName = Object.fromEntries(roster.characters.map((c) => [c.name, c]));
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-6">
@@ -219,8 +180,8 @@ export default function BusinessPage() {
             <Briefcase className="h-6 w-6" /> Business
           </h1>
           <p className="text-sm text-muted-foreground">
-            Assign AI characters to company roles. Each role adds its mandate on top of the
-            character&apos;s persona. Chat is grounded with hybrid RAG (BM25 + embeddings).
+            Build your AI company: assign multiple characters per role, pin workspaces,
+            debate with hybrid-RAG grounding, then dispatch subtasks to coding agents.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load} title="Reload roster">
@@ -228,52 +189,15 @@ export default function BusinessPage() {
         </Button>
       </header>
 
-      {/* Role assignment */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Roles</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          {roster.role_list.map((role) => {
-            const assignedId = roster.roles[role];
-            const assigned = assignedId ? charById[assignedId] : null;
-            return (
-              <div key={role} className="flex items-center gap-3 rounded-lg border p-3">
-                {assigned ? (
-                  <Avatar name={assigned.name} id={assigned.id} />
-                ) : (
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-dashed font-mono text-[10px] text-muted-foreground">
-                    ?
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {role}
-                    </span>
-                    {assigned && <Badge variant="secondary" className="text-[10px]">assigned</Badge>}
-                  </div>
-                  <select
-                    aria-label={`Assign ${role}`}
-                    value={assignedId ?? ""}
-                    onChange={(e) =>
-                      assign(role, e.target.value === "" ? null : e.target.value)
-                    }
-                    className="mt-1 w-full rounded border bg-transparent px-1.5 py-1 text-sm"
-                  >
-                    <option value="">— unassigned —</option>
-                    {roster.characters.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+      <RolesCard
+        tokenQS={tokenQS}
+        characters={roster.characters}
+        roles={roster.roles}
+        roleList={roster.role_list}
+        onChanged={load}
+      />
+
+      <SettingsCard tokenQS={tokenQS} settings={roster.settings} onSaved={load} />
 
       {/* Team tools */}
       <Card className="mb-6">
@@ -301,11 +225,7 @@ export default function BusinessPage() {
                   </option>
                 ))}
               </select>
-              <Button
-                size="sm"
-                disabled={!toolName || toolBusy}
-                onClick={runTool}
-              >
+              <Button size="sm" disabled={!toolName || toolBusy} onClick={runTool}>
                 {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Run"}
               </Button>
             </div>
@@ -320,7 +240,7 @@ export default function BusinessPage() {
       </Card>
 
       {/* Working session */}
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-sm font-medium">Working session</CardTitle>
         </CardHeader>
@@ -340,7 +260,7 @@ export default function BusinessPage() {
               Speak
             </Button>
           </div>
-          <p className="mt-1.5 text-xs text-muted-foreground">
+          <p className="mt-1.5 flex flex-wrap items-center text-xs text-muted-foreground">
             Or ask a specific role:
             {activeRoles.map((r) => (
               <Button
@@ -361,6 +281,37 @@ export default function BusinessPage() {
               {error}
             </p>
           )}
+
+          <div className="mt-4 space-y-3">
+            {history.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Set the topic and press Speak. Assigned characters respond in role,
+                citing your knowledge base when it helps.
+              </p>
+            )}
+            {history.map((turn, i) => (
+              <div key={i} className="flex gap-3">
+                <Avatar name={turn.speaker} id={charByName[turn.speaker]?.id} />
+                <div className="min-w-0 flex-1 rounded-lg border p-3">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-sm font-medium">{turn.speaker}</span>
+                    {turn.role && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {turn.role}
+                      </Badge>
+                    )}
+                    {turn.used_rag && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        RAG
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm">{turn.text}</p>
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
 
           {/* Judge → coding agents */}
           <div className="mt-4 flex items-center gap-2">
@@ -399,40 +350,10 @@ export default function BusinessPage() {
               {dispatchResult.slice(0, 3000)}
             </pre>
           )}
-
-          <div className="mt-4 space-y-3">
-            {history.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                Set the topic and press Speak. Assigned characters respond in role,
-                citing your knowledge base when it helps.
-              </p>
-            )}
-            {history.map((turn, i) => (
-              <div key={i} className="flex gap-3">
-                <Avatar
-                  name={turn.speaker}
-                  id={
-                    roster.characters.find((c) => c.name === turn.speaker)?.id
-                  }
-                />
-                <div className="min-w-0 flex-1 rounded-lg border p-3">
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="text-sm font-medium">{turn.speaker}</span>
-                    {turn.role && (
-                      <Badge variant="outline" className="text-[10px]">{turn.role}</Badge>
-                    )}
-                    {turn.used_rag && (
-                      <Badge variant="secondary" className="text-[10px]">RAG</Badge>
-                    )}
-                  </div>
-                  <p className="whitespace-pre-wrap text-sm">{turn.text}</p>
-                </div>
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
         </CardContent>
       </Card>
+
+      <LogsCard tokenQS={tokenQS} />
     </div>
   );
 }

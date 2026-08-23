@@ -1,0 +1,33 @@
+{
+  "CTO": {
+    "members": [
+      "Admiral_Statura"
+    ],
+    "workspace": null
+  },
+  "PM": {
+    "members": [],
+    "workspace": null
+  },
+  "Judge": {
+    "members": [],
+    "workspace": null
+  },
+  "Researcher": {
+    "members": [
+      "Ghost_-_The_bug"
+    ],
+    "workspace": null
+  },
+  "Engineer": {
+    "members": [
+      "linus_wolf",
+      "grace_kim"
+    ],
+    "workspace": "/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate"
+  },
+  "Analyst": {
+    "members": [],
+    "workspace": null
+  }
+}
