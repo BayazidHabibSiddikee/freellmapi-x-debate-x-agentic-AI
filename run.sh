@@ -1,169 +1,163 @@
 #!/bin/bash
-# FreeLLMAPI + AI Debate - Unified Startup Script
-# Usage: ./run.sh [start|stop|restart|status]
+# FreeLLMAPI × Debate × Agentic AI - Unified Startup Script (monorepo)
+# Usage: ./run.sh [start|stop|restart|status|install]
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEBATE_DIR="$HOME/Documents/AI_Debate"
 LOG_DIR="$SCRIPT_DIR/logs"
 PID_DIR="$SCRIPT_DIR/pids"
 
 mkdir -p "$LOG_DIR" "$PID_DIR"
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
 
-start_freellmapi() {
-    if lsof -i :3001 >/dev/null 2>&1; then
-        echo -e "${GREEN}✓ Express Server (:3001) already running${NC}"
-        return 0
-    fi
-    echo "Starting FreeLLMAPI Express Server..."
-    cd "$SCRIPT_DIR"
-    nohup npx tsx server/src/index.ts > "$LOG_DIR/freellmapi.log" 2>&1 &
-    echo $! > "$PID_DIR/freellmapi.pid"
-    for i in {1..10}; do
-        if curl -s http://localhost:3001/api/health >/dev/null 2>&1; then
-            echo -e "${GREEN}✓ Express Server running on :3001${NC}"
-            return 0
-        fi
+port_up() { lsof -i ":$1" >/dev/null 2>&1; }
+
+wait_http() { # url tries
+    for _ in $(seq 1 "${2:-15}"); do
+        curl -s "$1" >/dev/null 2>&1 && return 0
         sleep 1
     done
-    echo -e "${RED}✗ Failed to start Express Server${NC}"
     return 1
 }
 
-start_vite() {
-    # Vite is optional - Express serves everything on :3001
-    if lsof -i :5174 >/dev/null 2>&1; then
-        echo -e "${GREEN}✓ Vite Dashboard (:5174) already running${NC}"
-        return 0
+ensure_node_deps() {
+    local dir="$1"
+    if [ ! -d "$dir/node_modules" ]; then
+        echo "Installing npm deps in $dir ..."
+        (cd "$dir" && npm install --no-audit --no-fund >> "$LOG_DIR/npm-install.log" 2>&1)
     fi
-    echo "Starting Vite Dashboard (optional - Express also works on :3001)..."
+}
+
+ensure_venv() {
+    local dir="$1" req="$2"
+    if [ ! -f "$dir/venv/bin/python" ]; then
+        echo "Creating Python venv in $dir ..."
+        python3 -m venv "$dir/venv"
+        "$dir/venv/bin/pip" install -q --upgrade pip
+    fi
+    if [ -n "$req" ] && ! "$dir/venv/bin/pip" show rank_bm25 >/dev/null 2>&1; then
+        echo "Installing Python deps from $req ..."
+        "$dir/venv/bin/pip" install -q -r "$dir/$req" >> "$LOG_DIR/pip-install.log" 2>&1
+    fi
+}
+
+start_express() {  # FreeLLM API proxy + debate/business routes (:3001)
+    if port_up 3001; then echo -e "${GREEN}✓ Express Server (:3001) already running${NC}"; return 0; fi
+    ensure_node_deps "$SCRIPT_DIR"
+    echo "Starting Express Server (:3001)..."
+    cd "$SCRIPT_DIR"
+    nohup npx tsx server/src/index.ts > "$LOG_DIR/freellmapi.log" 2>&1 &
+    echo $! > "$PID_DIR/freellmapi.pid"
+    wait_http http://localhost:3001/api/health && \
+        echo -e "${GREEN}✓ Express Server running on :3001${NC}" || \
+        { echo -e "${RED}✗ Failed to start Express Server${NC}"; return 1; }
+}
+
+start_vite() {  # optional dev dashboard (:5174)
+    if port_up 5174; then echo -e "${GREEN}✓ Vite Dashboard (:5174) already running${NC}"; return 0; fi
+    ensure_node_deps "$SCRIPT_DIR/client" 2>/dev/null || true
+    echo "Starting Vite Dashboard (:5174, optional)..."
     cd "$SCRIPT_DIR"
     nohup npx vite --config client/vite.config.ts --port 5174 --host 0.0.0.0 > "$LOG_DIR/vite.log" 2>&1 &
     echo $! > "$PID_DIR/vite.pid"
     sleep 3
-    if curl -s http://localhost:5174/ >/dev/null 2>&1; then
-        echo -e "${GREEN}✓ Vite Dashboard running on :5174${NC}"
-    else
-        echo -e "${YELLOW}⚠ Vite may still be starting... Use :3001 instead${NC}"
-    fi
 }
 
-start_debate() {
-    if lsof -i :5050 >/dev/null 2>&1; then
-        echo -e "${GREEN}✓ Python Debate Server (:5050) already running${NC}"
-        return 0
-    fi
-    echo "Starting Python Debate Server..."
-    cd "$DEBATE_DIR"
-    if [ ! -f "venv/bin/python" ]; then
-        echo "  Creating Python virtual environment..."
-        python3 -m venv venv
-        source venv/bin/activate
-        pip install -q -r requirements-debate.txt
-        pip install -q -r requirements-rag.txt
-    fi
-    source venv/bin/activate
-    nohup python app.py > "$LOG_DIR/debate.log" 2>&1 &
+start_debate() {  # debate simulator (:5050)
+    if port_up 5050; then echo -e "${GREEN}✓ Debate Server (:5050) already running${NC}"; return 0; fi
+    ensure_venv "$SCRIPT_DIR/services/debate" "requirements-debate.txt"
+    echo "Starting Debate Server (:5050)..."
+    cd "$SCRIPT_DIR/services/debate"
+    nohup ./venv/bin/python app.py > "$LOG_DIR/debate.log" 2>&1 &
     echo $! > "$PID_DIR/debate.pid"
-    for i in {1..10}; do
-        if curl -s http://localhost:5050/ >/dev/null 2>&1; then
-            echo -e "${GREEN}✓ Python Debate Server running on :5050${NC}"
-            return 0
-        fi
-        sleep 1
-    done
-    echo -e "${RED}✗ Failed to start Python Debate Server${NC}"
-    return 1
+    wait_http http://localhost:5050/api/health && \
+        echo -e "${GREEN}✓ Debate Server running on :5050${NC}" || \
+        { echo -e "${RED}✗ Failed to start Debate Server${NC}"; return 1; }
+}
+
+start_rag() {  # hybrid RAG server (:5080)
+    if port_up 5080; then echo -e "${GREEN}✓ RAG Server (:5080) already running${NC}"; return 0; fi
+    ensure_venv "$SCRIPT_DIR/services/debate" "requirements-rag.txt"
+    echo "Starting Hybrid RAG Server (:5080)..."
+    cd "$SCRIPT_DIR/services/debate"
+    nohup ./venv/bin/python rag_server.py --port 5080 > "$LOG_DIR/rag.log" 2>&1 &
+    echo $! > "$PID_DIR/rag.pid"
+    wait_http http://localhost:5080/health && \
+        echo -e "${GREEN}✓ RAG Server running on :5080${NC}" || \
+        { echo -e "${RED}✗ Failed to start RAG Server${NC}"; return 1; }
+}
+
+start_console() {  # agentic-os Next.js console (:18443)
+    if port_up 18443; then echo -e "${GREEN}✓ Console (:18443) already running${NC}"; return 0; fi
+    ensure_node_deps "$SCRIPT_DIR/console"
+    echo "Starting Console (:18443)..."
+    cd "$SCRIPT_DIR/console"
+    nohup npm run dev > "$LOG_DIR/console.log" 2>&1 &
+    echo $! > "$PID_DIR/console.pid"
+    wait_http http://localhost:18443/ 20 && \
+        echo -e "${GREEN}✓ Console running on http://localhost:18443${NC}" || \
+        { echo -e "${RED}✗ Failed to start Console${NC}"; return 1; }
 }
 
 stop_all() {
     echo "Stopping all services..."
-    [ -f "$PID_DIR/freellmapi.pid" ] && kill $(cat "$PID_DIR/freellmapi.pid") 2>/dev/null || true
-    pkill -f "tsx.*server/src" 2>/dev/null || true
-    [ -f "$PID_DIR/vite.pid" ] && kill $(cat "$PID_DIR/vite.pid") 2>/dev/null || true
-    pkill -f "vite.*client" 2>/dev/null || true
-    [ -f "$PID_DIR/debate.pid" ] && kill $(cat "$PID_DIR/debate.pid") 2>/dev/null || true
-    pkill -f "python app.py" 2>/dev/null || true
+    for pidfile in "$PID_DIR"/*.pid; do
+        [ -f "$pidfile" ] && kill "$(cat "$pidfile")" 2>/dev/null || true
+    done
+    pkill -f "tsx.*server/src/index.ts" 2>/dev/null || true
+    pkill -f "vite.*client/vite.config" 2>/dev/null || true
+    pkill -f "services/debate/app.py" 2>/dev/null || true
+    pkill -f "rag_server.py --port 5080" 2>/dev/null || true
+    pkill -f "next dev -H 127.0.0.1 -p 18443" 2>/dev/null || true
+    rm -f "$PID_DIR"/*.pid
     echo -e "${GREEN}✓ All services stopped${NC}"
 }
 
 show_status() {
     echo ""
     echo "=========================================="
-    echo "     FreeLLMAPI Status"
+    echo "     FreeLLMAPI × Debate × Agentic AI"
     echo "=========================================="
-    echo ""
-    
-    if curl -s http://localhost:3001/api/health >/dev/null 2>&1; then
-        chars=$(curl -s http://localhost:3001/api/characters | python3 -c "import sys,json;print(len(json.load(sys.stdin)))" 2>/dev/null || echo "?")
-        echo -e "${GREEN}✓${NC} Express Server (:3001) - RUNNING"
-        echo "    Dashboard: http://localhost:3001/"
-        echo "    Playground: http://localhost:3001/playground"
-        echo "    Debate UI: http://localhost:3001/debate"
-        echo "    Characters: $chars loaded"
-    else
-        echo -e "${RED}✗${NC} Express Server (:3001) - DOWN"
+    check() {
+        local name="$1" url="$2"
+        if curl -s "$url" >/dev/null 2>&1; then
+            echo -e "${GREEN}✓${NC} $name"
+        else
+            echo -e "${RED}✗${NC} $name"
+        fi
+    }
+    check "Express Server   :3001  http://localhost:3001/"          http://localhost:3001/api/health
+    check "Debate Server    :5050  http://localhost:5050/chat"      http://localhost:5050/api/health
+    check "Hybrid RAG       :5080  http://localhost:5080/health"    http://localhost:5080/health
+    check "Console          :18443 http://localhost:18443/"         http://localhost:18443/
+    if port_up 5174; then
+        echo -e "${YELLOW}⚠${NC} Vite Dashboard   :5174 (optional, running)"
     fi
-    
     echo ""
-    
-    if curl -s http://localhost:5174/ >/dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC} Vite Dashboard (:5174) - RUNNING (optional)"
-        echo "    http://localhost:5174/"
-    else
-        echo -e "${YELLOW}⚠${NC} Vite Dashboard (:5174) - NOT RUNNING"
-        echo "    (Use http://localhost:3001/ instead - it works!)"
-    fi
-    
-    echo ""
-    
-    if curl -s http://localhost:5050/ >/dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC} Python Debate Server (:5050) - RUNNING"
-        echo "    API: http://localhost:5050/"
-    else
-        echo -e "${RED}✗${NC} Python Debate Server (:5050) - DOWN"
-    fi
-    
-    echo ""
-    echo "=========================================="
-    echo "  Quick Commands:"
-    echo "    ./run.sh start    - Start all services"
-    echo "    ./run.sh stop     - Stop all services"
-    echo "    ./run.sh restart  - Restart all services"
-    echo "    ./run.sh status   - Show status"
+    echo "  Business section: http://localhost:18443/business"
     echo "=========================================="
     echo ""
 }
 
 case "${1:-start}" in
     start)
-        start_freellmapi
-        start_vite
+        start_express
+        start_rag
         start_debate
+        start_console
         show_status
         ;;
-    stop)
-        stop_all
+    stop)    stop_all ;;
+    restart) stop_all; sleep 2; "$0" start ;;
+    status)  show_status ;;
+    install)
+        ensure_node_deps "$SCRIPT_DIR"
+        ensure_node_deps "$SCRIPT_DIR/client"
+        ensure_node_deps "$SCRIPT_DIR/console"
+        ensure_venv "$SCRIPT_DIR/services/debate" "requirements-debate.txt"
+        echo -e "${GREEN}✓ All dependencies installed${NC}"
         ;;
-    restart)
-        stop_all
-        sleep 2
-        start_freellmapi
-        start_vite
-        start_debate
-        show_status
-        ;;
-    status)
-        show_status
-        ;;
-    *)
-        echo "Usage: $0 {start|stop|restart|status}"
-        exit 1
-        ;;
+    *) echo "Usage: $0 {start|stop|restart|status|install}"; exit 1 ;;
 esac
