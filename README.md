@@ -14,6 +14,7 @@ Aggregate the free tiers from Google, Groq, Cerebras, NVIDIA, Mistral, OpenRoute
 **[freellmapi.co](https://freellmapi.co)** — browse the live model catalog
 
 > **📖 Read this first:** [GOAL.md](./GOAL.md) — what this project is and why it exists ·
+> [BENCHMARK.md](./BENCHMARK.md) — rated vs MetaGPT/CrewAI/OpenHands/raw Claude + runnable micro-bench ·
 > [HELP.md](./HELP.md) — how to run, use, configure, and troubleshoot everything
 
 ---

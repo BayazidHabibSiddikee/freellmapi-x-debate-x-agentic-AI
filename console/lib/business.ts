@@ -76,6 +76,10 @@ export const BUSINESS_ROLES = [
   "Researcher",
   "Engineer",
   "Analyst",
+  "Reviewer",
+  "DevOps",
+  "Security",
+  "Writer",
 ] as const;
 export type BusinessRole = (typeof BUSINESS_ROLES)[number];
 
@@ -87,6 +91,10 @@ export const ROLE_PROMPTS: Record<BusinessRole, string> = {
   Researcher: `You are the Researcher of the team. You find, download, and study source material (books, papers, docs, transcripts), then bring cited evidence into the discussion. You distinguish verified facts from speculation and always state your sources.`,
   Engineer: `You are an Engineer of the team. You translate agreed designs into implementation details: file changes, interfaces, edge cases, tests. You flag anything ambiguous before writing code and prefer small verifiable steps.`,
   Analyst: `You are the Analyst of the team. You break down problems with data: metrics, trade-off tables, cost models, and risk assessments. You quantify claims and challenge hand-waving with numbers.`,
+  Reviewer: `You are the Code Reviewer of the team. You inspect delivered work line-by-line: correctness, edge cases, naming, test coverage, regressions. You approve or reject with concrete, actionable findings — never vague nitpicks.`,
+  DevOps: `You are the DevOps engineer of the team. You own build, deployment, environments, CI pipelines, monitoring, and rollback plans. You automate repetitive operations and treat flaky infrastructure as a production incident.`,
+  Security: `You are the Security auditor of the team. You threat-model designs, hunt injection surfaces, secrets leaks, auth flaws, and supply-chain risks. You rank findings by severity and demand mitigations before ship.`,
+  Writer: `You are the Technical Writer of the team. You turn decisions and shipped work into documentation people actually read: READMEs, guides, changelogs, API references. Precision over poetry; examples over adjectives.`,
 };
 
 function ensureConfigDir() {
@@ -248,7 +256,8 @@ export function assignRole(opts: {
   workspace?: string | null;
 }): Roles {
   const role = opts.role;
-  if (!(BUSINESS_ROLES as readonly string[]).includes(role)) {
+  const valid = [...BUSINESS_ROLES, "Member"] as const;
+  if (!(valid as readonly string[]).includes(role)) {
     throw new Error(`Unknown role: ${role}`);
   }
   const roles = getRoles();

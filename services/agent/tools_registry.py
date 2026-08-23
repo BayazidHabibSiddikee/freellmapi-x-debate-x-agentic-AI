@@ -241,7 +241,7 @@ TOOLS: Dict[str, Dict[str, Any]] = {
             "k": {"type": "integer", "required": False, "default": 6},
             "source_type": {"type": "string", "required": False, "default": None},
         },
-        "roles": {"Researcher", "CTO", "PM", "Judge", "Engineer", "Analyst"},
+        "roles": {"Researcher", "CTO", "PM", "Judge", "Engineer", "Analyst", "Reviewer", "DevOps", "Security", "Writer"},
         "func": study,
     },
     "youtube_transcript": {
@@ -258,7 +258,7 @@ TOOLS: Dict[str, Dict[str, Any]] = {
         "args": {
             "query": {"type": "string", "required": True},
         },
-        "roles": {"Researcher", "PM", "CTO"},
+        "roles": {"Researcher", "PM", "CTO", "Security", "DevOps"},
         "func": web_search,
     },
     "read_project_docs": {
@@ -274,7 +274,7 @@ TOOLS: Dict[str, Dict[str, Any]] = {
             "max_chars": {"type": "integer", "required": False, "default": 6000},
         },
         # everyone may read; coders rarely need it but no reason to block
-        "roles": {"CTO", "PM", "Judge", "Researcher", "Analyst", "Engineer"},
+        "roles": {"CTO", "PM", "Judge", "Researcher", "Analyst", "Engineer", "Reviewer", "DevOps", "Security", "Writer"},
         "func": read_project_docs,
     },
     "read_pdf": {
@@ -285,7 +285,7 @@ TOOLS: Dict[str, Dict[str, Any]] = {
             "pages": {"type": "string", "required": False, "default": "",
                        "desc": "e.g. '5' or '10-20'; default first 8 pages"},
         },
-        "roles": {"Researcher", "PM", "Judge", "Analyst", "CTO"},
+        "roles": {"Researcher", "PM", "Judge", "Analyst", "CTO", "Security", "Reviewer", "Writer"},
         "func": read_pdf,
     },
     "code_task": {
@@ -303,8 +303,9 @@ TOOLS: Dict[str, Dict[str, Any]] = {
             "timeout_seconds": {"type": "integer", "required": False,
                                  "default": 900},
         },
-        # ONLY engineers write code. Everyone else reads docs / dispatches via judge.
-        "roles": {"Engineer"},
+        # Only people whose job is producing files: Engineers (product code)
+        # and DevOps (infra/pipelines). Everyone else reads docs / dispatches via judge.
+        "roles": {"Engineer", "DevOps"},
         "func": code_task,
     },
 }

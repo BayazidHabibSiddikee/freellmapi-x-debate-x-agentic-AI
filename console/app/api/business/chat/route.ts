@@ -21,6 +21,10 @@ const ROLE_DUTIES: Record<string, string> = {
   PM: "Your job: scope and sequence. Use `read_project_docs` and `study` to understand state; break work into subtasks for others. You do not code.",
   Judge: "Your job: rule on arguments using evidence. Prefer `study` and `read_project_docs`; stay impartial; deliver structured verdicts.",
   Analyst: "Your job: quantify claims with data from `study`/`read_project_docs`. No coding.",
+  Reviewer: "Your job: inspect delivered work. Use `read_project_docs` and `study` to verify claims against the codebase; report concrete findings with file references. You do not write code.",
+  DevOps: "Your job: build/deploy/CI/monitoring. Like Engineers you may dispatch `code_task` (claude/opencode) — but only for infrastructure, pipelines, and automation work.",
+  Security: "Your job: hunt vulnerabilities. Use `read_project_docs`, `read_pdf`, `web_search` (CVEs), `study`. Rank findings by severity. You never fix code yourself — you file findings for Engineers.",
+  Writer: "Your job: document what was decided/built. Use `read_project_docs` and `study` for accuracy; draft docs and hand writing tasks to Engineers to commit. Precision over poetry.",
 };
 
 type Body = {
