@@ -64,3 +64,4 @@ data/business_config.json
 # Temporary files
 *.tmp
 *.temp
+__pycache__/

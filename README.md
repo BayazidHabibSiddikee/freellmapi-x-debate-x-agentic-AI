@@ -13,6 +13,53 @@ Aggregate the free tiers from Google, Groq, Cerebras, NVIDIA, Mistral, OpenRoute
 
 **[freellmapi.co](https://freellmapi.co)** — browse the live model catalog
 
+---
+
+# 🏢 Monorepo: FreeLLMAPI × Debate × Agentic AI
+
+This repository is a unified workspace combining four projects:
+
+| Path | What it is | Port |
+|------|------------|------|
+| `server/` + `client/` | **FreeLLM API** — OpenAI-compatible proxy across 16+ free providers; also hosts debate/business routes | 3001 |
+| `console/` | **Agentic OS Console** (Next.js) — includes the **Business** surface for role-based AI teams | 18443 |
+| `services/debate/` | **Debate Simulator + Hybrid RAG server** — 18 characters, FAISS embeddings fused with BM25 via Reciprocal Rank Fusion | 5050 / 5080 |
+| `services/agent/` | **Agent tools & dispatcher** — role-gated tool registry (download books → ingest → study) and judge→subtask→CLI dispatch to `claude`/`opencode` | 5090 |
+| `tools/` | Python tool library (pdf_downloader, stealth_browser, youtube_transcript, …) | — |
+
+## The core idea
+
+> AI coding agents make mistakes when given vague instructions. Instead:
+> **characters debate → judge distills a task spec → coding agents execute with precise prompts**, grounded by a hybrid RAG knowledge base.
+
+1. Assign your AI characters to company roles in the console's **Business** page (`/business`) — CTO, PM, Judge, Researcher, Developer. Each role layers its mandate on top of the character's persona.
+2. Debate a goal in the working session. Context is injected from the hybrid RAG (BM25 + embeddings, RRF-fused).
+3. The **Researcher** can download books/PDFs from the web (`tools/pdf_downloader.py`) which are auto-ingested into the knowledge base, then cited in debates.
+4. Hit **Judge**: the transcript becomes a structured JSON task spec (goal, decisions, subtasks).
+5. Hit **Dispatch**: each subtask runs headlessly through `claude -p` or `opencode run` in its target repo. Results feed back into the session for team review.
+
+## Quick start
+
+```bash
+./run.sh install   # npm deps (server/client/console) + python venv
+./run.sh start     # express :3001 · rag :5080 · debate :5050 · agent :5090 · console :18443
+./run.sh status
+```
+
+Then open **http://localhost:18443/business**.
+
+### Configuration (env)
+
+- `RAG_SERVER_URL` (default `http://localhost:5080`)
+- `AGENT_TOOLS_URL` (default `http://localhost:5090`)
+- `FREELLM_API_BASE` (default `http://localhost:3001/v1`), `FREELLM_MODEL` (default `auto`)
+- `CLAUDE_FLAGS` — e.g. `--permission-mode acceptEdits` to let dispatched tasks write files
+- `DISPATCH_TIMEOUT` — seconds per subtask (default 900)
+
+Role assignments persist in `config/business/roles.json`. Character roster lives in `services/debate/characters.json`.
+
+---
+
 ![Fallback chain with per-provider token budget](repo-assets/fallback-chain.png)
 
 </div>
