@@ -1,0 +1,16 @@
+Read AGENTS.md first. It has the full developer-facing instructions for this Next.js codebase.
+
+This repo is the open-source Agentic OS Console — a Next.js 15 web app that runs locally and talks to Hermes Agent. Audience for the product itself is solo founders; this file is for AI assistants helping develop the codebase.
+
+Strict voice rules across all code, copy, comments, and skill files:
+- USE: leverage, own, compete, coordination overhead, second brain, pipeline, runway
+- AVOID: productivity, efficient, automate, seamless, AI workforce, AI company, founding cohort, em-dash abuse, hedging language
+
+Don't:
+- Add a chat surface to the Next.js app (Hermes already has chat)
+- Use paid search APIs (Tavily, Perplexity, Bing) — use lib/search.ts (ddgr → gogcli → browser)
+- Add paid-tier feature flags or upsell prompts
+- Push to git remote without user consent
+- Anthropomorphize with named character agents (persona system is user-customizable)
+
+See AGENTS.md for full conventions.
