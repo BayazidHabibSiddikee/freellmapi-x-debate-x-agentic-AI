@@ -1,7 +1,12 @@
 # CLAUDE.md — agent guidance for this repository
 
-FreeLLMAPI: Express 5 + TypeScript ESM monorepo (`shared`, `server`, `client`
-npm workspaces) with a React/Vite client. The Business module adds an
+**Project shape:** this is a **single-maintainer project built by combining
+other projects** — a FreeLLMAPI base merged with AI_Debate and agentic-os
+pieces into one product. It is NOT an open-source fork to contribute back to:
+never file PRs upstream or treat `tashfeenahmed/freellmapi` as a target.
+
+FreeLLMAPI itself: Express 5 + TypeScript ESM monorepo (`shared`, `server`,
+`client` npm workspaces) with a React/Vite client. The Business module adds an
 AI-team layer with a hybrid BM25 + embedding RAG knowledge library.
 
 ## Commands
@@ -40,7 +45,10 @@ confirm none of the above appear.
 
 ## Push targets
 
-The workspace origin `tashfeenahmed/freellmapi` rejects pushes from the local
-credential (403). The writable remote for shipped changes is
-`BayazidHabibSiddikee/freellmapi-x-debate-x-agentic-AI` — check that repo's
-`main` before pushing; it may already contain equivalent content.
+The canonical GitHub home is
+`BayazidHabibSiddikee/freellmapi-x-debate-x-agentic-AI` — always push there.
+The workspace origin `tashfeenahmed/freellmapi` is the upstream source this
+project was built from; it is read-only for you (403 on push) and must never
+receive pushes or PRs. Before pushing, fetch that combined repo's `main`
+first — it can contain newer work than any local checkout; verify local files
+are a superset/additive diff before overwriting anything.
