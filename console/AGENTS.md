@@ -105,6 +105,11 @@ Don't add new Hermes mutation paths in the Next.js app. Add a bridge skill inste
 - Don't run `git push` from any tool unless the user explicitly asks.
 - Don't introduce paid search APIs (Tavily, Perplexity, Bing). The ddgr/gogcli/browser cascade is a deliberate differentiator.
 - Don't anthropomorphize with named character mascots. The persona system is user-customizable, not a fixed cast.
+  - **EXCEPTION (owner decision, 2026-08-23):** the `Business` surface (`app/business/`) intentionally
+    uses named characters from `services/debate/characters.json` as role-holders (CTO, PM, Judge,
+    Researcher, Developer). Roles layer their mandate on top of the character persona
+    (`lib/business.ts`). Don't apply the mascot rule to code under `app/business/`, `app/api/business/`,
+    or `lib/business.ts`.
 
 ## Testing
 

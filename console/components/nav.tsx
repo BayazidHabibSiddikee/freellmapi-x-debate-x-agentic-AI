@@ -11,6 +11,7 @@ import {
   Clock,
   Settings,
   BarChart3,
+  Briefcase,
   Menu,
   X,
   PanelLeftClose,
@@ -21,6 +22,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 const items = [
   { href: "/", label: "Today", icon: LayoutDashboard },
+  { href: "/business", label: "Business", icon: Briefcase },
   { href: "/skills", label: "Skills", icon: Sparkles },
   { href: "/wiki", label: "Wiki", icon: BookOpen },
   { href: "/journal", label: "Journal", icon: CalendarDays },
