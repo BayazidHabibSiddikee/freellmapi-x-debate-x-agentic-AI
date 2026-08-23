@@ -1,0 +1,58 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+
+# next.js
+.next/
+out/
+build/
+dist/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# python (vault indexer)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# env / secrets
+.env
+.env*.local
+.env.development
+.env.production
+
+# vault.db (built locally, never committed from this repo)
+*.db
+*.db-shm
+*.db-wal
+
+# logs / temp
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+*.pem
+.cache/
+.turbo/
+
+# editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Obsidian (legacy from second-brain template)
+.obsidian/
+.trash/
+
+# Internal planning drafts — kept locally, never published
+wiki/draft-*.md
