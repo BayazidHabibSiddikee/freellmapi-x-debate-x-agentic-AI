@@ -57,7 +57,7 @@ export type BusinessSettings = {
 };
 
 export const DEFAULT_SETTINGS: BusinessSettings = {
-  model: "gemini-3.5-flash",
+  model: "auto",
   temperature: 0.8,
   max_tokens: 500,
   history_turns: 6,
@@ -415,9 +415,9 @@ export function saveSettings(patch: Partial<BusinessSettings>): BusinessSettings
 
 // ── Hybrid RAG context ────────────────────────────────────────────────────────
 
-const RAG_URL = process.env.RAG_SERVER_URL ?? "http://localhost:5080";
+const RAG_URL = process.env.RAG_SERVER_URL ?? "http://127.0.0.1:5080";
 const LLM_BASE =
-  process.env.FREELLM_API_BASE ?? process.env.OPENAI_API_BASE ?? "http://localhost:3001/v1";
+  process.env.FREELLM_API_BASE ?? process.env.OPENAI_API_BASE ?? "http://127.0.0.1:3001/v1";
 const LLM_MODEL_ENV = process.env.FREELLM_MODEL ?? process.env.LLM_MODEL;
 
 /** Unified API key for the local FreeLLM proxy: env override, else its SQLite DB. */

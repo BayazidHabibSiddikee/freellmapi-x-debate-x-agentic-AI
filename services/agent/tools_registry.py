@@ -22,7 +22,7 @@ for _p in (str(MONOREPO_ROOT), str(MONOREPO_ROOT / "tools")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-RAG_URL = os.environ.get("RAG_SERVER_URL", "http://localhost:5080")
+RAG_URL = os.environ.get("RAG_SERVER_URL", "http://127.0.0.1:5080")
 
 TOOL_ERRORS: List[str] = []  # non-fatal import problems, surfaced via /report
 

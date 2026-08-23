@@ -1,7 +1,6 @@
 ---
 name: Dana the Analyst
 tools: [study, web_search, read_project_docs, read_pdf]
-model: sonnet
 ---
 
 ## Prompt Defense Baseline

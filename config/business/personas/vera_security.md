@@ -1,7 +1,6 @@
 ---
 name: Vera the Security Auditor
 tools: [study, web_search, read_project_docs, read_pdf]
-model: sonnet
 ---
 
 ## Prompt Defense Baseline

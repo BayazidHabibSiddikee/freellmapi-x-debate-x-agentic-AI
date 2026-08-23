@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateToken } from "@/lib/auth";
 import { getCharacter } from "@/lib/business";
 
-const AGENT_URL = process.env.AGENT_TOOLS_URL ?? "http://localhost:5090";
+const AGENT_URL = process.env.AGENT_TOOLS_URL ?? "http://127.0.0.1:5090";
 
 export async function POST(req: NextRequest) {
   if (!validateToken(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });

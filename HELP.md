@@ -29,7 +29,21 @@ Logs live in `logs/` and are viewable in the Business page's **Logs** card.
 
 ## 2. The three main surfaces
 
-### 🏢 Business team — http://localhost:18443/business
+### 🏢 Where the team actually works — the three surfaces
+
+| Surface | Identity | What happens there |
+|---|---|---|
+| **Business** (`:18443/business`) | **The workplace** | Roles, tool grants, projects, boardroom debates, judge→dispatch. Deliverables and decisions land here |
+| **The Office** (`:18443/business/rooms`) | **1-on-1 rooms** | Private persistent chats with any of the ~46 people. Each person remembers past conversations (PostgreSQL) and those memories bleed into boardroom debates |
+| **Debate** (`:3001/debate`) | **The arena** | Adversarial group roleplay with the original 18 characters; reputations form |
+
+Memory architecture: one PostgreSQL database (`swordoffice-pg` Docker container,
+schema `office`, SQLite auto-fallback) — `teams`, `rooms`, `messages`,
+`persona_memory`. Memories are **directional**: what Ada knows about Kai is
+stored separately from what Kai knows about Ada, and when a character is about
+to speak in the boardroom, the system injects what they remember about the
+teammates present. Personas are rows, not databases — 46 people, one backup.
+
 
 1. **Roles card** — assign characters to CTO / PM / Judge / Researcher /
    Engineer / Analyst. Multiple characters per role is fine (they take turns).
@@ -116,7 +130,7 @@ local FreeLLM proxy on :3001 — nothing talks to remote APIs directly.
                                     FreeLLM proxy :3001/v1
                                      (16+ providers, auto-route)
                                                    ▼
-                                        gemini-3.5-flash (default)
+                                        auto (FreeLLM proxy routes to your configured default)
 
  Grounding side (parallel):
    console/agent tools ──► RAG :5080 (BM25 + FAISS, RRF fusion)

@@ -10,7 +10,7 @@ Flow:
      (`claude -p` / `opencode run`) in its target repo path and captures output.
 
 Env:
-  FREELLM_API_BASE  default http://localhost:3001/v1 (local FreeLLM proxy)
+  FREELLM_API_BASE  default http://127.0.0.1:3001/v1 (local FreeLLM proxy)
   FREELLM_MODEL     default auto
   JUDGE_MODEL       optional override for the judge call
   DISPATCH_TIMEOUT  per-subtask timeout seconds (default 900)
@@ -30,8 +30,8 @@ from activity import log_event
 
 HOME = Path.home()
 
-FREELLM_BASE = os.environ.get("FREELLM_API_BASE", "http://localhost:3001/v1")
-JUDGE_MODEL = os.environ.get("JUDGE_MODEL", os.environ.get("FREELLM_MODEL", "gemini-3.5-flash"))
+FREELLM_BASE = os.environ.get("FREELLM_API_BASE", "http://127.0.0.1:3001/v1")
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", os.environ.get("FREELLM_MODEL", "auto"))
 DISPATCH_TIMEOUT = int(os.environ.get("DISPATCH_TIMEOUT", "900"))
 JUDGE_MAX_RETRIES = int(os.environ.get("JUDGE_MAX_RETRIES", "2"))
 CLAUDE_FLAGS = os.environ.get("CLAUDE_FLAGS", "").split()

@@ -65,7 +65,7 @@ debateRouter.post('/chat', async (req: Request, res: Response) => {
 
   // Stable instruct model by default — 'auto' sometimes routes to reasoning
   // models (gpt-oss etc.) that leak chain-of-thought into the chat.
-  const model = process.env.DEBATE_MODEL || 'gemini-3.5-flash';
+  const model = process.env.DEBATE_MODEL || 'auto';
 
   const messages: Array<{role: string; content: string}> = [
     { role: 'system', content:
@@ -108,7 +108,7 @@ debateRouter.post('/chat', async (req: Request, res: Response) => {
   try {
     let reply = '';
     for (let attempt = 0; attempt < 2; attempt++) {
-      const proxyRes = await fetch('http://localhost:3001/v1/chat/completions', {
+      const proxyRes = await fetch('http://127.0.0.1:3001/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
         body: JSON.stringify({ model, messages, max_tokens: 300 }),

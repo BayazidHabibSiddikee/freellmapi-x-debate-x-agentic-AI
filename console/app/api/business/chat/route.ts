@@ -12,6 +12,14 @@ import {
 } from "@/lib/business";
 
 /** Human instruction for what each role is allowed to DO — injected into prompts. */
+const rosterCharacterIdByName = (name: string): string | undefined =>
+  getCharacterList().find((c) => c.name === name)?.id;
+
+function getCharacterList() {
+  // lazy import cycle avoided: listCharacters re-exported here
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return (require("@/lib/business") as typeof import("@/lib/business")).listCharacters();
+}
 const ROLE_DUTIES: Record<string, string> = {
   Engineer:
     "Your job: turn decisions into code. Use the `code_task` tool to drive claude/opencode inside the project folder. Never hand-code in the debate — dispatch, then report results.",
@@ -116,12 +124,28 @@ export async function POST(req: NextRequest) {
       .map(getCharacter)
       .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
+    // Memory: what this character remembers — prioritized by teammates present
+    let memCtx = "";
+    try {
+      const about = [...peerIds].join(",");
+      const res = await fetch(
+        `${process.env.AGENT_TOOLS_URL ?? "http://127.0.0.1:5090"}/persona/${character.id}/memory/context?limit=6&about=${encodeURIComponent(about)}`,
+        { signal: AbortSignal.timeout(5_000) },
+      );
+      if (res.ok) {
+        memCtx = ((await res.json()) as { context?: string }).context ?? "";
+      }
+    } catch {
+      /* memory store down → proceed without */
+    }
+
     const systemPrompt =
       composeSystemPrompt(role, character, peers) +
       (ROLE_DUTIES[role as string]
         ? `\n\nYour duty in this session: ${ROLE_DUTIES[role as string]}` +
           `\nTools you may ask the operator to run for you: ${character.tools?.length ? character.tools.join(", ") : "your role's defaults"}.`
         : "") +
+      (memCtx ? `\n${memCtx}` : "") +
       (project
         ? `\n\nThe team's current project is "${project.name}", rooted at ${project.folder}. Keep discussion relevant to this codebase/folder.`
         : "") +
@@ -136,6 +160,28 @@ export async function POST(req: NextRequest) {
       userName: body.user_name,
       settings,
     });
+
+    // Learning: record this persona's stance; note who they were responding to
+    const lastSpeaker = body.history?.[body.history.length - 1];
+    const lastChar = lastSpeaker
+      ? rosterCharacterIdByName(lastSpeaker.speaker)
+      : undefined;
+    fetch(
+      `${process.env.AGENT_TOOLS_URL ?? "http://127.0.0.1:5090"}/persona/${character.id}/memory`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "teammate",
+          content: `On "${topic.slice(0, 80)}" I argued: "${text.slice(0, 160)}"` +
+            (lastChar && lastChar !== character.id
+              ? ` — responding to ${lastSpeaker!.speaker}.`
+              : ""),
+          subject_id: lastChar ?? undefined,
+        }),
+        signal: AbortSignal.timeout(5_000),
+      },
+    ).catch(() => {});
 
     return NextResponse.json({
       speaker: character.name,

@@ -187,9 +187,14 @@ export default function BusinessPage() {
             debate with hybrid-RAG grounding, then dispatch subtasks to coding agents.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} title="Reload roster">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <a href="/business/rooms" className="text-xs underline underline-offset-4 text-muted-foreground hover:text-foreground">
+            The Office (1-on-1 rooms) →
+          </a>
+          <Button variant="outline" size="sm" onClick={load} title="Reload roster">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </header>
 
       <RolesCard

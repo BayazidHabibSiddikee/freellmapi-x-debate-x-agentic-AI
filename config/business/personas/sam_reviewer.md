@@ -1,7 +1,6 @@
 ---
 name: Sam the Reviewer
 tools: [study, read_project_docs, code_task]
-model: sonnet
 ---
 
 ## Prompt Defense Baseline

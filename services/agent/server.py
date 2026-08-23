@@ -18,8 +18,11 @@ from pydantic import BaseModel
 from tools_registry import execute, list_tools, report, ToolError
 from dispatcher import judge_spec, dispatch_spec
 from activity import log_event
+import db
 
 app = FastAPI(title="Business Agent Tools", version="1.0")
+
+DB_BACKEND = db.init_schema()
 
 app.add_middleware(
     CORSMiddleware,
@@ -100,6 +103,82 @@ async def dispatch(req: DispatchRequest):
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)[:500]}
 
+
+
+# ── Office: persistent rooms, messages, persona memory ───────────────────────
+
+class RoomCreate(BaseModel):
+    id: str
+    kind: str = "persona"       # persona | boardroom | debate
+    title: str
+    meta: dict = {}
+
+class MessageIn(BaseModel):
+    role: str                    # user | persona
+    speaker: str
+    content: str
+    character_id: Optional[str] = None
+
+class MemoryIn(BaseModel):
+    kind: str = "fact"           # job | teammate | fact | preference
+    content: str
+    subject_id: Optional[str] = None   # who this memory is ABOUT
+
+
+@app.get("/db/status")
+async def db_status():
+    return {**db.status(), "requested_backend": DB_BACKEND}
+
+
+@app.get("/rooms")
+async def rooms():
+    return {"rooms": db.list_rooms()}
+
+
+@app.post("/rooms")
+async def create_room(req: RoomCreate):
+    db.ensure_room(req.id, req.kind, req.title, req.meta)
+    return {"ok": True}
+
+
+@app.delete("/rooms/{room_id}")
+async def delete_room(room_id: str):
+    with db.conn() as c:
+        cur = c.cursor()
+        pfx = "office." if "psycopg" in type(c).__module__ else ""
+        cur.execute(f"DELETE FROM {pfx}rooms WHERE id = %s", (room_id,))
+        deleted = cur.rowcount > 0
+    return {"ok": bool(deleted)}
+
+
+@app.get("/rooms/{room_id}/messages")
+async def room_messages(room_id: str, limit: int = 200):
+    return {"messages": db.get_messages(room_id, min(limit, 500))}
+
+
+@app.post("/rooms/{room_id}/messages")
+async def add_message(room_id: str, req: MessageIn):
+    db.add_message(room_id, req.role, req.speaker, req.content, req.character_id)
+    log_event("office_message", room=room_id, role=req.role)
+    return {"ok": True}
+
+
+@app.get("/persona/{character_id}/memory")
+async def persona_memory(character_id: str, limit: int = 20):
+    return {"memories": db.recall_about(character_id, limit)}
+
+
+@app.post("/persona/{character_id}/memory")
+async def remember_for(character_id: str, req: MemoryIn):
+    db.remember(character_id, req.kind, req.content, subject_id=req.subject_id)
+    return {"ok": True}
+
+
+@app.get("/persona/{character_id}/memory/context")
+async def persona_memory_context(character_id: str, limit: int = 6,
+                                 about: str = ""):
+    subjects = [s.strip() for s in about.split(",") if s.strip()] or None
+    return {"context": db.memory_context(character_id, limit, subjects)}
 
 if __name__ == "__main__":
     import argparse
