@@ -27,11 +27,23 @@ export function tokenQS(): string {
   return encodeURIComponent(_t);
 }
 
-export function Avatar({ name, id }: { name: string; id?: string }) {
+export function Avatar({
+  name,
+  id,
+  className = "h-10 w-10",
+  textClass = "text-xs",
+}: {
+  name: string;
+  id?: string;
+  className?: string;
+  textClass?: string;
+}) {
   const [failed, setFailed] = useState(false);
   if (failed || !id) {
     return (
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-xs">
+      <div
+        className={`flex shrink-0 items-center justify-center rounded-full bg-muted font-mono ${className} ${textClass}`}
+      >
         {name.slice(0, 2).toUpperCase()}
       </div>
     );
@@ -42,7 +54,7 @@ export function Avatar({ name, id }: { name: string; id?: string }) {
       src={`/api/business/avatar/${encodeURIComponent(id)}.card.png?t=${tokenQS()}`}
       alt={name}
       onError={() => setFailed(true)}
-      className="h-10 w-10 shrink-0 rounded-full object-cover"
+      className={`${className} shrink-0 rounded-full object-cover`}
     />
   );
 }

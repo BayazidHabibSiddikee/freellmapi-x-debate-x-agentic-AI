@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateToken } from "@/lib/auth";
+import { getRoles } from "@/lib/business";
 
 const AGENT_URL = process.env.AGENT_TOOLS_URL ?? "http://localhost:5090";
 
@@ -16,11 +17,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "topic is required" }, { status: 400 });
   }
 
+  // Hint the judge with each role's pinned workspace
+  const roles = getRoles();
+  const workspaces = Object.fromEntries(
+    Object.entries(roles)
+      .filter(([, cfg]) => cfg.workspace && cfg.members.length > 0)
+      .map(([r, cfg]) => [r, cfg.workspace as string]),
+  );
+
   try {
     const res = await fetch(`${AGENT_URL}/judge`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, workspaces }),
       signal: AbortSignal.timeout(300_000),
     });
     const data = await res.json();

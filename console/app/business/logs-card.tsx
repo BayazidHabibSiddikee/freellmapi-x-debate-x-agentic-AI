@@ -12,6 +12,7 @@ const LOG_FILES = [
   "debate.log",
   "freellmapi.log",
   "console.log",
+  "telegram.log",
 ] as const;
 
 export function LogsCard({ tokenQS }: { tokenQS: () => string }) {

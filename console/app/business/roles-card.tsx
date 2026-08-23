@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Users, X, MapPin } from "lucide-react";
-import type { Character } from "./avatar";
+import { Avatar, type Character } from "./avatar";
 
 export type RoleConfig = { members: string[]; workspace?: string | null };
 
@@ -85,10 +85,11 @@ export function RolesCard({
                   return (
                     <span
                       key={id}
-                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+                      className="inline-flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2 text-xs"
                       title={c?.system_prompt?.slice(0, 120)}
                     >
-                      {c?.name ?? id}
+                      <Avatar name={c?.name ?? id} id={id} className="h-6 w-6" textClass="text-[9px]" />
+                      <span className="max-w-24 truncate">{c?.name ?? id}</span>
                       <button
                         aria-label={`Remove ${c?.name ?? id} from ${role}`}
                         onClick={() => post({ role, remove: id }).catch(() => {})}

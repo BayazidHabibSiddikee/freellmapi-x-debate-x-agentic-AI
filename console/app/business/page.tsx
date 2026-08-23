@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Briefcase, Loader2, Send, RefreshCw, Gavel, Rocket } from "lucide-react";
 import { Avatar, tokenQS, type Character } from "./avatar";
 import { RolesCard, type RoleConfig } from "./roles-card";
+import { CharactersBrowser } from "./characters-browser";
 import { LogsCard } from "./logs-card";
 import { SettingsCard, type Settings } from "./settings-card";
 
@@ -195,6 +196,20 @@ export default function BusinessPage() {
         roles={roster.roles}
         roleList={roster.role_list}
         onChanged={load}
+      />
+
+      <CharactersBrowser
+        tokenQS={tokenQS}
+        characters={roster.characters}
+        roles={roster.roles}
+        roleList={roster.role_list}
+        onAssign={(role, characterId) => {
+          fetch(`/api/business/assign?t=${tokenQS()}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role, add: characterId }),
+          }).then(load);
+        }}
       />
 
       <SettingsCard tokenQS={tokenQS} settings={roster.settings} onSaved={load} />

@@ -113,6 +113,29 @@ start_console() {  # agentic-os Next.js console (:18443)
         { echo -e "${RED}✗ Failed to start Console${NC}"; return 1; }
 }
 
+start_telegram() {  # Telegram team bridge (no port; long-polls)
+    if [ -f "$PID_DIR/telegram.pid" ] && kill -0 "$(cat "$PID_DIR/telegram.pid")" 2>/dev/null; then
+        echo -e "${GREEN}✓ Telegram bridge already running${NC}"; return 0
+    fi
+    if ! grep -q "TELEGRAM_BOT_TOKEN" "$SCRIPT_DIR/.env" 2>/dev/null; then
+        echo -e "${YELLOW}⚠ No TELEGRAM_BOT_TOKEN in .env — skipping Telegram bridge${NC}"
+        return 0
+    fi
+    ensure_venv "$SCRIPT_DIR/services/debate" "requirements-rag.txt"
+    echo "Starting Telegram bridge..."
+    cd "$SCRIPT_DIR/services/telegram"
+    set -a; source "$SCRIPT_DIR/.env"; set +a
+    nohup ../debate/venv/bin/python bot.py > "$LOG_DIR/telegram.log" 2>&1 &
+    echo $! > "$PID_DIR/telegram.pid"
+    sleep 3
+    if kill -0 "$(cat "$PID_DIR/telegram.pid")" 2>/dev/null; then
+        echo -e "${GREEN}✓ Telegram bridge running (@kaggle_shot_bot)${NC}"
+    else
+        echo -e "${RED}✗ Telegram bridge failed — see logs/telegram.log${NC}"
+        return 1
+    fi
+}
+
 stop_all() {
     echo "Stopping all services..."
     for pidfile in "$PID_DIR"/*.pid; do
@@ -123,6 +146,7 @@ stop_all() {
     pkill -f "services/debate/app.py" 2>/dev/null || true
     pkill -f "rag_server.py --port 5080" 2>/dev/null || true
     pkill -f "server.py --port 5090" 2>/dev/null || true
+    pkill -f "services/telegram/bot.py" 2>/dev/null || true
     pkill -f "next dev -H 127.0.0.1 -p 18443" 2>/dev/null || true
     rm -f "$PID_DIR"/*.pid
     echo -e "${GREEN}✓ All services stopped${NC}"
@@ -162,6 +186,7 @@ case "${1:-start}" in
         start_debate
         start_agent
         start_console
+        start_telegram
         show_status
         ;;
     stop)    stop_all ;;

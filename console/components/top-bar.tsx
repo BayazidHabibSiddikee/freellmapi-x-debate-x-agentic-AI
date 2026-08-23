@@ -1,10 +1,11 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ExternalLink } from "lucide-react";
 
 const SEGMENT_LABELS: Record<string, string> = {
   "": "Today",
+  business: "Business",
   skills: "Skills",
   ceo: "CEO Pack",
   cro: "Revenue Pack",
@@ -17,8 +18,16 @@ const SEGMENT_LABELS: Record<string, string> = {
   journal: "Journal",
   sources: "Sources",
   automations: "Automations",
+  insights: "Insights",
   settings: "Settings",
 };
+
+/** Cross-app surfaces served by the FreeLLM dashboard on :3001. */
+const APP_LINKS = [
+  { href: "/debate", label: "Debate" },
+  { href: "/knowledge", label: "Knowledge" },
+  { href: "/personal", label: "Personal" },
+];
 
 function humanize(seg: string): string {
   if (SEGMENT_LABELS[seg] !== undefined) return SEGMENT_LABELS[seg];
@@ -30,6 +39,10 @@ export function TopBar() {
   const path = usePathname();
   const segments = path.split("/").filter(Boolean);
   const trail = segments.length === 0 ? ["Today"] : segments.map(humanize);
+  const dashBase =
+    typeof window !== "undefined"
+      ? `${window.location.protocol}//${window.location.hostname}:3001`
+      : "http://localhost:3001";
 
   return (
     <div className="hidden md:flex h-12 items-center justify-between border-b border-[hsl(var(--border-default))] px-6 dense">
@@ -53,7 +66,19 @@ export function TopBar() {
         ))}
       </div>
 
-      <div className="flex items-center gap-3 font-mono text-[10px] text-[hsl(var(--fg-dim))]">
+      <div className="flex items-center gap-4 font-mono text-[10px] text-[hsl(var(--fg-dim))]">
+        {APP_LINKS.map(({ href, label }) => (
+          <a
+            key={href}
+            href={`${dashBase}${href}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 transition-colors hover:text-[hsl(var(--fg-secondary))]"
+          >
+            {label}
+            <ExternalLink className="h-2.5 w-2.5" />
+          </a>
+        ))}
         <span>{new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
       </div>
     </div>
