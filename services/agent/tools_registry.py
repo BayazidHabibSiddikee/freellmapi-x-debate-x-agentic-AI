@@ -184,6 +184,34 @@ def read_pdf(path: str, pages: str = "") -> Dict[str, Any]:
     return {"file": str(p), "total_pages": total, "text": text[:8000]}
 
 
+# ── Phase 3: cross-team knowledge marketplace ──────────────────────────────────
+
+def _publish_insight_wrapper(topic: str, insight: str, team: str = "",
+                             author: str = "") -> Dict[str, Any]:
+    """Publish a lesson to the shared marketplace. Team/author default to the
+    dispatching agent's identity (AGENT_TEAM / AGENT_NAME env) so callers don't
+    have to repeat them."""
+    import industry
+    return industry.publish(
+        team=team or os.environ.get("AGENT_TEAM", "main"),
+        author=author or os.environ.get("AGENT_NAME", "unknown"),
+        topic=topic, insight=insight,
+    )
+
+
+def _cross_team_search_wrapper(query: str, exclude_team: Optional[str] = None,
+                               limit: int = 6) -> Dict[str, Any]:
+    import industry
+    results = industry.search(
+        query,
+        exclude_team=exclude_team or os.environ.get("AGENT_TEAM") or None,
+        limit=limit,
+    )
+    return {"query": query, "count": len(results),
+            "results": results,
+            "note": "insights are from teams OTHER than yours by default"}
+
+
 # ── Coding via headless CLI (Engineer-only) ───────────────────────────────────
 
 def code_task(prompt: str, cwd: str = ".", agent: Optional[str] = None,
@@ -484,6 +512,46 @@ TOOLS: Dict[str, Dict[str, Any]] = {
         # and DevOps (infra/pipelines). Everyone else reads docs / dispatches via judge.
         "roles": {"Engineer", "DevOps"},
         "func": code_task,
+    },
+    # ── Phase 3: cross-team knowledge marketplace ──────────────────────────────
+    "publish_insight": {
+        "description": (
+            "Publish a reusable lesson to the cross-team knowledge marketplace "
+            "(office.industry_insights) so OTHER teams can find it. Use after a "
+            "notable win, failure post-mortem, or decision with general value. "
+            "Knowledge-broker roles only."
+        ),
+        "args": {
+            "topic": {"type": "string", "required": True,
+                       "desc": "Short searchable label, e.g. 'postgres migrations'"},
+            "insight": {"type": "string", "required": True,
+                         "desc": "The lesson itself — concrete, actionable, <= 2000 chars"},
+            "team": {"type": "string", "required": False, "default": "main",
+                      "desc": "Publishing team id"},
+            "author": {"type": "string", "required": False, "default": "",
+                        "desc": "Persona/character publishing the insight"},
+        },
+        # Brokers of institutional knowledge — not a coder's or writer's job.
+        "roles": {"CTO", "PM", "Judge", "Analyst", "Researcher"},
+        "func": _publish_insight_wrapper,
+    },
+    "cross_team_search": {
+        "description": (
+            "Search lessons published by OTHER teams (your own team's entries are "
+            "excluded by default). Use before starting work that another team may "
+            "have already solved or failed at."
+        ),
+        "args": {
+            "query": {"type": "string", "required": True,
+                       "desc": "Keywords, e.g. 'docker pgvector migration rollback'"},
+            "exclude_team": {"type": "string", "required": False, "default": None,
+                              "desc": "Team id to exclude (defaults to your own)"},
+            "limit": {"type": "integer", "required": False, "default": 6},
+        },
+        # Reading the marketplace is cheap and universally valuable.
+        "roles": {"CTO", "PM", "Judge", "Researcher", "Analyst", "Engineer",
+                   "Reviewer", "DevOps", "Security", "Writer"},
+        "func": _cross_team_search_wrapper,
     },
 }
 
