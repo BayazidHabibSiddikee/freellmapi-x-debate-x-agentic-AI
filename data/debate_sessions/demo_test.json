@@ -1,0 +1,15 @@
+{
+  "session_id": "demo_test",
+  "topic": "AI Ethics Demo",
+  "participants": [
+    "Admiral Statura",
+    "Elena Vasquez"
+  ],
+  "updated_at": "2026-08-23T05:58:58.828Z",
+  "history": [
+    {
+      "speaker": "Admiral Statura",
+      "text": "Test message"
+    }
+  ]
+}
