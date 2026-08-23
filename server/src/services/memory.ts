@@ -52,6 +52,11 @@ export function listMemories(limit = 100): PersonaMemory[] {
   ).all(limit) as PersonaMemory[];
 }
 
+export function countMemories(): number {
+  const row = getDb().prepare('SELECT COUNT(*) AS n FROM persona_memories').get() as { n: number };
+  return row.n;
+}
+
 /** Everything the team has implicitly learned about the given people. */
 export function memoriesAboutSubjects(subjects: string[], limit = 8): PersonaMemory[] {
   if (subjects.length === 0) return [];

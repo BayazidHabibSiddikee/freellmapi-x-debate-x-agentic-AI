@@ -18,7 +18,7 @@ import { sendOk, sendError } from '../lib/envelope.js';
 import { toolsForRole, buildToolBlock, parseToolCall } from '../lib/business-tools.js';
 import {
   buildColleagueKnowledgeBlock, recordStatement,
-  listMemories, forgetMemory,
+  listMemories, countMemories, forgetMemory,
 } from '../services/memory.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -391,7 +391,8 @@ businessRouter.post('/search', (req: Request, res: Response) => {
 
 // GET /business/api/memories — what the team has learned about itself
 businessRouter.get('/memories', (_req: Request, res: Response) => {
-  return sendOk(res, { memories: listMemories(200), total: listMemories(10_000).length });
+  const memories = listMemories(200);
+  return sendOk(res, { memories, total: memories.length < 200 ? memories.length : countMemories() });
 });
 
 // DELETE /business/api/memories/:id — forget one memory
