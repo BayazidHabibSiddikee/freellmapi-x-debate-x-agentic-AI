@@ -1,0 +1,10 @@
+2026-07-23 20:13:05 | INFO     | app | LLM initialized: llama3 at https://api.freellmapi.com/v1
+2026-07-23 20:13:05 | INFO     | app | Loaded 23 characters
+2026-07-23 20:13:05 | INFO     | app | Starting FastAPI Debate Simulator on port 5050
+2026-07-23 20:13:05 | INFO     | app | LLM: llama3 at https://api.freellmapi.com/v1
+2026-07-23 20:13:05 | INFO     | app | LLM initialized: llama3 at https://api.freellmapi.com/v1
+2026-07-23 20:13:05 | INFO     | app | Loaded 23 characters
+INFO:     Started server process [777976]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5050 (Press CTRL+C to quit)
