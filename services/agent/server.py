@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from tools_registry import execute, list_tools, report, ToolError
+from dispatcher import judge_spec, dispatch_spec
 
 app = FastAPI(title="Business Agent Tools", version="1.0")
 
@@ -58,6 +59,36 @@ async def run_tool(req: ExecuteRequest):
 @app.get("/report")
 async def get_report():
     return report()
+
+
+# ── Judge → dispatch ──────────────────────────────────────────────────────────
+
+class JudgeRequest(BaseModel):
+    topic: str
+    history: list = []
+
+
+class DispatchRequest(BaseModel):
+    spec: dict
+    only: list = []   # subtask ids; empty = all
+
+
+@app.post("/judge")
+async def judge(req: JudgeRequest):
+    try:
+        spec = await asyncio.to_thread(judge_spec, req.topic, req.history)
+        return {"ok": True, "spec": spec}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:500]}
+
+
+@app.post("/dispatch")
+async def dispatch(req: DispatchRequest):
+    try:
+        result = await asyncio.to_thread(dispatch_spec, req.spec, req.only or None)
+        return {"ok": True, **result}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:500]}
 
 
 if __name__ == "__main__":

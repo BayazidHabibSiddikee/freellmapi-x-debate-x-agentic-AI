@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, Loader2, Send, RefreshCw } from "lucide-react";
+import { Briefcase, Loader2, Send, RefreshCw, Gavel, Rocket } from "lucide-react";
 
 type Character = {
   id: string;
@@ -71,6 +71,9 @@ export default function BusinessPage() {
   const [toolBusy, setToolBusy] = useState(false);
   const [toolResult, setToolResult] = useState<string | null>(null);
   const [toolError, setToolError] = useState<string | null>(null);
+  const [spec, setSpec] = useState<{ goal?: string; subtasks?: Array<Record<string, unknown>> } | null>(null);
+  const [judgeBusy, setJudgeBusy] = useState(false);
+  const [dispatchResult, setDispatchResult] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const activeRoles0 = roster?.role_list.filter((r) => roster.roles[r]) ?? [];
@@ -145,6 +148,55 @@ export default function BusinessPage() {
       setError(e instanceof Error ? e.message : "request failed");
     } finally {
       setBusyRole(null);
+    }
+  }
+
+  async function judgeAndDispatch() {
+    if (!topic.trim() || judgeBusy) return;
+    setJudgeBusy(true);
+    setError(null);
+    setSpec(null);
+    setDispatchResult(null);
+    try {
+      const res = await fetch(`/api/business/judge?t=${tokenQS()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, history }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setSpec(data.spec);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "judge failed");
+    } finally {
+      setJudgeBusy(false);
+    }
+  }
+
+  async function runSubtasks() {
+    if (!spec || judgeBusy) return;
+    setJudgeBusy(true);
+    try {
+      const res = await fetch(`/api/business/dispatch?t=${tokenQS()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spec }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setDispatchResult(JSON.stringify(data.summary) + "\n\n" + (data.results ?? []).map(
+        (r: { id?: string; status?: string; output?: string }) =>
+          `${r.id}: ${r.status}${r.output ? `\n${String(r.output).slice(0, 400)}` : ""}`,
+      ).join("\n\n"));
+      // Feed results back into the session for team review
+      setHistory((h) => [...h, {
+        speaker: "Dispatcher",
+        text: `Subtasks executed. Summary: ${JSON.stringify(data.summary)}. Review outputs above.`,
+      }]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "dispatch failed");
+    } finally {
+      setJudgeBusy(false);
     }
   }
 
@@ -308,6 +360,44 @@ export default function BusinessPage() {
             <p className="mt-3 rounded border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
               {error}
             </p>
+          )}
+
+          {/* Judge → coding agents */}
+          <div className="mt-4 flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!topic.trim() || history.length === 0 || judgeBusy}
+              onClick={judgeAndDispatch}
+              title="Distill the debate into a task spec"
+            >
+              {judgeBusy && !spec ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Gavel className="h-4 w-4" />
+              )}
+              Judge
+            </Button>
+            {spec && (
+              <Button size="sm" disabled={judgeBusy} onClick={runSubtasks}>
+                {judgeBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Rocket className="h-4 w-4" />
+                )}
+                Dispatch {spec.subtasks?.length ?? 0} subtask(s)
+              </Button>
+            )}
+          </div>
+          {spec && (
+            <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-2 text-xs">
+              {JSON.stringify(spec, null, 2).slice(0, 2500)}
+            </pre>
+          )}
+          {dispatchResult && (
+            <pre className="mt-2 max-h-56 overflow-auto rounded border p-2 text-xs">
+              {dispatchResult.slice(0, 3000)}
+            </pre>
           )}
 
           <div className="mt-4 space-y-3">

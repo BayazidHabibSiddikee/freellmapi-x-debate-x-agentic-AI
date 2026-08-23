@@ -107,7 +107,26 @@ export function composeSystemPrompt(role: BusinessRole, character: Character): s
 const RAG_URL = process.env.RAG_SERVER_URL ?? "http://localhost:5080";
 const LLM_BASE =
   process.env.FREELLM_API_BASE ?? process.env.OPENAI_API_BASE ?? "http://localhost:3001/v1";
-const LLM_MODEL = process.env.FREELLM_MODEL ?? process.env.LLM_MODEL ?? "llama3";
+const LLM_MODEL = process.env.FREELLM_MODEL ?? process.env.LLM_MODEL ?? "auto";
+
+/** Unified API key for the local FreeLLM proxy: env override, else its SQLite DB. */
+function freellmKey(): string {
+  if (process.env.FREELLM_API_KEY) return process.env.FREELLM_API_KEY;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Database = require("better-sqlite3");
+    const dbPath = join(MONOREPO_ROOT, "server", "data", "freeapi.db");
+    const db = new Database(dbPath, { readonly: true });
+    const row = db
+      .prepare("SELECT value FROM settings WHERE key = 'unified_api_key'")
+      .get() as { value?: string } | undefined;
+    db.close();
+    if (row?.value) return row.value;
+  } catch {
+    /* fall through */
+  }
+  return "not-needed";
+}
 
 export async function ragContext(
   query: string,
@@ -161,7 +180,7 @@ export async function generateTurn(opts: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.FREELLM_API_KEY ?? "not-needed"}`,
+      Authorization: `Bearer ${freellmKey()}`,
     },
     body: JSON.stringify({
       model: LLM_MODEL,

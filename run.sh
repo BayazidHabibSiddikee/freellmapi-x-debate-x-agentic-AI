@@ -89,6 +89,18 @@ start_rag() {  # hybrid RAG server (:5080)
         { echo -e "${RED}✗ Failed to start RAG Server${NC}"; return 1; }
 }
 
+start_agent() {  # business agent tools (:5090)
+    if port_up 5090; then echo -e "${GREEN}✓ Agent Tools (:5090) already running${NC}"; return 0; fi
+    ensure_venv "$SCRIPT_DIR/services/debate" "requirements-rag.txt"
+    echo "Starting Agent Tools Server (:5090)..."
+    cd "$SCRIPT_DIR/services/agent"
+    nohup ../debate/venv/bin/python server.py --port 5090 > "$LOG_DIR/agent.log" 2>&1 &
+    echo $! > "$PID_DIR/agent.pid"
+    wait_http http://localhost:5090/health && \
+        echo -e "${GREEN}✓ Agent Tools running on :5090${NC}" || \
+        { echo -e "${RED}✗ Failed to start Agent Tools${NC}"; return 1; }
+}
+
 start_console() {  # agentic-os Next.js console (:18443)
     if port_up 18443; then echo -e "${GREEN}✓ Console (:18443) already running${NC}"; return 0; fi
     ensure_node_deps "$SCRIPT_DIR/console"
@@ -110,6 +122,7 @@ stop_all() {
     pkill -f "vite.*client/vite.config" 2>/dev/null || true
     pkill -f "services/debate/app.py" 2>/dev/null || true
     pkill -f "rag_server.py --port 5080" 2>/dev/null || true
+    pkill -f "server.py --port 5090" 2>/dev/null || true
     pkill -f "next dev -H 127.0.0.1 -p 18443" 2>/dev/null || true
     rm -f "$PID_DIR"/*.pid
     echo -e "${GREEN}✓ All services stopped${NC}"
@@ -131,6 +144,7 @@ show_status() {
     check "Express Server   :3001  http://localhost:3001/"          http://localhost:3001/api/health
     check "Debate Server    :5050  http://localhost:5050/chat"      http://localhost:5050/api/health
     check "Hybrid RAG       :5080  http://localhost:5080/health"    http://localhost:5080/health
+    check "Agent Tools      :5090  http://localhost:5090/health"    http://localhost:5090/health
     check "Console          :18443 http://localhost:18443/"         http://localhost:18443/
     if port_up 5174; then
         echo -e "${YELLOW}⚠${NC} Vite Dashboard   :5174 (optional, running)"
@@ -146,6 +160,7 @@ case "${1:-start}" in
         start_express
         start_rag
         start_debate
+        start_agent
         start_console
         show_status
         ;;
