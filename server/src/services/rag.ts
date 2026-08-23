@@ -368,13 +368,26 @@ export interface SearchHit {
 
 const RRF_K = 60;
 
-/** Run BM25 + semantic retrieval over the whole library and fuse with RRF. */
-export function hybridSearch(query: string, topK = 6): SearchHit[] {
-  const docs = listDocuments();
-  if (docs.length === 0) return [];
+// ── Corpus cache ─────────────────────────────────────────────────────────────
+// Building the fused corpus (chunk texts + vectors for EVERY document) costs a
+// full read of the library per query. The library changes rarely relative to
+// how often it is searched, so we cache the built corpus keyed by a cheap
+// signature of the document listing; any upload/delete/rewrite changes the
+// signature and invalidates it.
+interface Corpus {
+  key: string;
+  chunks: RagChunk[];
+  vectors: number[][];
+  docOf: Map<string, { id: string; name: string }>;
+}
 
-  // Build a flat corpus with GLOBALLY unique chunk ids (each document reuses
-  // local ids like chunk_0, so prefix them with the document id).
+let corpusCache: Corpus | null = null;
+
+function corpusKey(docs: DocMeta[]): string {
+  return docs.map((d) => `${d.id}:${d.size}:${d.uploadedAt}`).join("|");
+}
+
+function buildCorpus(docs: DocMeta[]): Corpus {
   const chunks: RagChunk[] = [];
   const vectors: number[][] = [];
   const docOf = new Map<string, { id: string; name: string }>();
@@ -393,6 +406,23 @@ export function hybridSearch(query: string, topK = 6): SearchHit[] {
       vectors.push(v[i] ?? embed(c.text));
     }
   }
+  return { key: '', chunks, vectors, docOf };
+}
+
+/** Run BM25 + semantic retrieval over the whole library and fuse with RRF. */
+export function hybridSearch(query: string, topK = 6): SearchHit[] {
+  const docs = listDocuments();
+  if (docs.length === 0) return [];
+
+  // GLOBALLY unique chunk ids (each document reuses local ids like chunk_0,
+  // so they are prefixed with the document id).
+  const key = corpusKey(docs);
+  if (!corpusCache || corpusCache.key !== key) {
+    const built = buildCorpus(docs);
+    built.key = key;
+    corpusCache = built;
+  }
+  const { chunks, vectors, docOf } = corpusCache;
   if (chunks.length === 0) return [];
 
   const queryVec = embed(query);
