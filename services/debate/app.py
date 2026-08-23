@@ -29,11 +29,33 @@ load_dotenv()
 app = FastAPI(title="AI Debate Simulator")
 
 # Configuration from environment
-OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "http://localhost:11434/v1")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "not-needed")
-LLM_MODEL = os.getenv("LLM_MODEL", "llama3")
+OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "http://localhost:3001/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.5-flash")
 RAG_SERVER_URL = os.getenv("RAG_SERVER_URL", "http://localhost:5080")
 DEBUG_MODE = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1", "t")
+
+
+def _freellm_key() -> str:
+    """Auth for the local FreeLLM proxy: env override, else its SQLite DB."""
+    key = os.getenv("OPENAI_API_KEY", "")
+    if key and key != "not-needed":
+        return key
+    try:
+        import sqlite3
+        db_path = Path(__file__).resolve().parents[2] / "server" / "data" / "freeapi.db"
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        row = con.execute(
+            "SELECT value FROM settings WHERE key = 'unified_api_key'"
+        ).fetchone()
+        con.close()
+        if row and row[0]:
+            return row[0]
+    except Exception as e:
+        logger.warning(f"Could not auto-discover FreeLLM API key: {e}")
+    return "not-needed"
+
+
+OPENAI_API_KEY = _freellm_key()
 
 # Initialize LLM with error handling
 try:
@@ -284,6 +306,61 @@ async def sync_session(req: SyncSessionRequest):
         logger.error(f"Failed to sync session: {e}")
         return {"status": "error"}
 
+
+# Session management endpoints
+@app.get("/api/sessions")
+async def list_sessions():
+    """List all saved debate sessions"""
+    sessions_dir = Path("storage/sessions")
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    
+    sessions = []
+    for f in sessions_dir.glob("*.json"):
+        try:
+            with open(f, 'r') as fp:
+                data = json.load(fp)
+                sessions.append({
+                    "session_id": data.get("session_id", f.stem),
+                    "topic": data.get("topic", "Untitled"),
+                    "participants": data.get("participants", []),
+                    "updated_at": data.get("updated_at", ""),
+                    "history_count": len(data.get("history", []))
+                })
+        except Exception as e:
+            logger.error(f"Failed to read session {f}: {e}")
+    
+    # Sort by updated_at descending
+    sessions.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+    return {"sessions": sessions}
+
+@app.get("/api/sessions/{session_id}")
+async def get_session(session_id: str):
+    """Load a specific debate session"""
+    filepath = Path(f"storage/sessions/{session_id}.json")
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        return data
+    except Exception as e:
+        logger.error(f"Failed to load session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a debate session"""
+    filepath = Path(f"storage/sessions/{session_id}.json")
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    try:
+        filepath.unlink()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Failed to delete session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")

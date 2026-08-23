@@ -642,6 +642,19 @@
                 <i class="ri-download-line"></i> Export
             </button>
         </div>
+
+        <!-- Conversation History -->
+        <div class="control-group" style="margin-top: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label><i class="ri-history-line"></i> Recent Conversations</label>
+                <button class="btn" style="padding: 2px 6px; font-size: 0.7rem;" onclick="loadSessions()">
+                    <i class="ri-refresh-line"></i>
+                </button>
+            </div>
+            <div id="sessionList" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+                <div class="loader" style="font-size: 11px; padding: 8px;">Loading...</div>
+            </div>
+        </div>
     </div>
 
     <!-- Main Chat Area -->
@@ -1045,9 +1058,93 @@
         // Add custom animation for spinner
         document.head.insertAdjacentHTML('beforeend', `<style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>`);
 
+        // Session history management
+        async function loadSessions() {
+            try {
+                const res = await fetch('/api/sessions');
+                const data = await res.json();
+                const sessions = data.sessions || [];
+                const container = document.getElementById('sessionList');
+
+                if (sessions.length === 0) {
+                    container.innerHTML = '<div style="color: var(--text-subtle); font-size: 11px; padding: 8px;">No saved conversations</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                sessions.slice(0, 10).forEach(s => {
+                    const date = s.updated_at ? new Date(s.updated_at).toLocaleDateString() : 'Unknown';
+                    const div = document.createElement('div');
+                    div.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg-surface-hi); border-radius: 8px; cursor: pointer; transition: all 0.2s;';
+                    div.onmouseover = () => div.style.background = 'var(--bg-surface-active)';
+                    div.onmouseout = () => div.style.background = 'var(--bg-surface-hi)';
+                    div.innerHTML = `
+                        <div style="flex: 1; overflow: hidden;" onclick="restoreSessionById('${s.session_id}')">
+                            <div style="font-size: 12px; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.topic || 'Untitled'}</div>
+                            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">${s.history_count || 0} messages • ${date}</div>
+                        </div>
+                        <button onclick="event.stopPropagation(); deleteSession('${s.session_id}')" style="background: none; border: none; color: var(--text-subtle); cursor: pointer; padding: 4px;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-subtle)'">
+                            <i class="ri-delete-bin-line"></i>
+                        </button>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                console.error("Failed to load sessions:", e);
+            }
+        }
+
+        async function restoreSessionById(sessionId) {
+            try {
+                const res = await fetch(`/api/sessions/${sessionId}`);
+                const data = await res.json();
+
+                sessionId = data.session_id;
+                localStorage.setItem('debateSessionId', sessionId);
+
+                chatHistory = data.history || [];
+                const chatLog = document.getElementById('chatLog');
+                chatLog.innerHTML = '';
+
+                chatHistory.forEach(msg => appendMessage(msg.speaker, msg.text));
+
+                if (data.topic) {
+                    document.getElementById('topicInput').value = data.topic;
+                    localStorage.setItem('debateTopic', data.topic);
+                }
+                if (data.participants) {
+                    localStorage.setItem('debateChars', JSON.stringify(data.participants));
+                    document.querySelectorAll('.char-card input').forEach(cb => {
+                        cb.checked = data.participants.includes(cb.value);
+                        updateCharCard(cb);
+                    });
+                }
+
+                updateHeaderMeta();
+                toggleSidebar();
+            } catch (e) {
+                console.error("Failed to restore session:", e);
+                alert("Failed to load conversation");
+            }
+        }
+
+        async function deleteSession(sessionId) {
+            if (!confirm("Delete this conversation?")) return;
+            try {
+                await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+                loadSessions();
+                if (sessionId === localStorage.getItem('debateSessionId')) {
+                    clearChat();
+                }
+            } catch (e) {
+                console.error("Failed to delete session:", e);
+            }
+        }
+
         // Initialize
         loadCharacters().then(() => {
             restoreSession();
+            loadSessions();
             updateHeaderMeta();
         });
         

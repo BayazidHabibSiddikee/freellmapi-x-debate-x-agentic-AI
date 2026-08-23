@@ -100,10 +100,36 @@ Environment overrides: `RAG_SERVER_URL`, `AGENT_TOOLS_URL`, `FREELM_API_BASE`,
 
 ---
 
-## 5. Troubleshooting
+## 5. Verified message flow
+
+Every hop below is tested and working. All LLM traffic funnels through the
+local FreeLLM proxy on :3001 — nothing talks to remote APIs directly.
+
+```
+ BROWSER / TELEGRAM
+   │
+   ├─ :3001/debate  ──► Express /debate/api/chat ──┐
+   ├─ :3001/personal ─┘                            │
+   ├─ :18443/business ──► console API ─────────────┤
+   └─ telegram bot ─────► console API ─────────────┤
+                                                   ▼
+                                    FreeLLM proxy :3001/v1
+                                     (16+ providers, auto-route)
+                                                   ▼
+                                        gemini-3.5-flash (default)
+
+ Grounding side (parallel):
+   console/agent tools ──► RAG :5080 (BM25 + FAISS, RRF fusion)
+   agent tools ──► tools/pdf_downloader etc. ──► ingest back into RAG
+   judge/dispatcher ──► :3001/v1 + headless claude/opencode CLIs
+```
+
+## 6. Troubleshooting
 
 | Symptom | Fix |
 |---|---|
+| `[Error: Could not generate response - Connection error.]` on :5050 chat | The old default pointed at Ollama (:11434). Fixed — `services/debate/.env` now targets the local proxy. Ensure Express (:3001) is running, then restart debate: kill the process and re-run `./run.sh start` |
+| Chat replies leak meta-text ("traits", "instructions") | Fixed by pinning `gemini-3.5-flash`. Override via `DEBATE_MODEL` env or Settings card |
 | Console asks for auth / 401s | Open via the launch URL with `?t=<token>` from `~/.hermes/agentic-os/token` |
 | Debate history item won't load | Ensure Express was restarted after this fix (`./run.sh restart`) |
 | `/api/business/chat` says "no character assigned" | Assign at least one member in the Roles card |
@@ -119,7 +145,7 @@ dispatch is journaled there.
 
 ---
 
-## 6. Repo map
+## 7. Repo map
 
 ```
 server/ client/     FreeLLM API proxy + dashboard (Express + React)
