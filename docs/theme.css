@@ -131,3 +131,19 @@ body:has(#xsid) { margin-left: 208px; }
   color: var(--fg-low); font-size: 9.5px;
 }
 
+/* live service status dots */
+#xsid-status {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px;
+  padding: 8px 10px; margin-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--fg-low); font-size: 9.5px;
+}
+#xsid-status .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: hsl(220 6% 30%);
+  display: inline-block; margin-right: 2px;
+}
+#xsid-status .dot.up { background: var(--ok); box-shadow: 0 0 5px hsl(152 60% 45% / .6); }
+#xsid-status .dot.warn { background: var(--warn); }
+#xsid-status .dot.down { background: var(--err); }
+

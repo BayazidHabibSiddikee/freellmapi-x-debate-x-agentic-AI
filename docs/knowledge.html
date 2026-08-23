@@ -137,18 +137,24 @@
 <aside id="xsid">
   <a class="brand" href="/">Sword<span>Office</span></a>
   <div class="group">Workspace</div>
-  <a class="xlink" href="http://localhost:3001/playground">Playground</a>
-  <a class="xlink" href="http://localhost:3001/debate">Debate</a>
-  <a class="xlink" href="http://localhost:3001/personal">Personal</a>
-  <a class="xlink" href="http://localhost:3001/knowledge">Knowledge</a>
-  <a class="xlink" href="http://localhost:3001/business">Business</a>
+  <a class="xlink" href="http://127.0.0.1:3001/playground">Playground</a>
+  <a class="xlink" href="http://127.0.0.1:3001/debate">Debate</a>
+  <a class="xlink" href="http://127.0.0.1:3001/personal">Personal</a>
+  <a class="xlink" href="http://127.0.0.1:3001/knowledge">Knowledge</a>
+  <a class="xlink" href="http://127.0.0.1:3001/business">Business</a>
   <div class="group">Configure</div>
   <a class="xlink ext" href="http://localhost:18443/business">AI Team</a>
-  <a class="xlink" href="http://localhost:3001/keys">API Keys</a>
-  <a class="xlink" href="http://localhost:3001/models">Models</a>
-  <a class="xlink" href="http://localhost:3001/fallback">Fallbacks</a>
-  <a class="xlink" href="http://localhost:3001/analytics">Analytics</a>
+  <a class="xlink ext" href="http://localhost:18443/business/rooms">The Office</a>
+  <a class="xlink" href="http://127.0.0.1:3001/keys">API Keys</a>
+  <a class="xlink" href="http://127.0.0.1:3001/analytics">Analytics</a>
   <a class="xlink ext" href="http://localhost:18443/settings">Settings</a>
+  <div class="group">System</div>
+  <div id="xsid-status">
+    <span class="dot" id="st-express"></span>api
+    <span class="dot" id="st-rag"></span>rag
+    <span class="dot" id="st-agent"></span>agent
+    <span class="dot" id="st-pg"></span>pg
+  </div>
   <div class="foot">local-first AI team</div>
 </aside>
 <script>
@@ -157,6 +163,26 @@
   document.querySelectorAll('#xsid a.xlink').forEach(function(a){
     if (a.getAttribute('href') === here) a.classList.add('current');
   });
+  function probe(id,url){
+    fetch(url).then(r=>{
+      document.getElementById(id).classList.add(r.ok?'up':'down');
+    }).catch(()=>document.getElementById(id).classList.add('down'));
+  }
+  probe('st-express','http://127.0.0.1:3001/api/health');
+  probe('st-rag','http://127.0.0.1:5080/health');
+  probe('st-agent','http://127.0.0.1:5090/health');
+  fetch('http://127.0.0.1:5090/db/status').then(r=>r.json()).then(d=>{
+    if(d.backend==='postgres') document.getElementById('st-pg').classList.add('up');
+    else document.getElementById('st-pg').classList.add('warn');
+  }).catch(()=>document.getElementById('st-pg').classList.add('down'));
+  setInterval(function(){
+    ['st-express','st-rag','st-agent'].forEach(function(id){
+      document.getElementById(id).classList.remove('up','down','warn');
+    });
+    probe('st-express','http://127.0.0.1:3001/api/health');
+    probe('st-rag','http://127.0.0.1:5080/health');
+    probe('st-agent','http://127.0.0.1:5090/health');
+  },30000);
 })();
 </script>
 <nav style="position:fixed;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:300;background:rgba(13,18,28,.92);border:1px solid rgba(255,255,255,.10);border-radius:30px;padding:7px 12px;backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.35)">

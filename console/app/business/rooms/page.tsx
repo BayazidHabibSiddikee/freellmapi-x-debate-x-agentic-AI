@@ -91,7 +91,10 @@ export default function OfficePage() {
         <p className="text-sm text-muted-foreground">
           Private 1-on-1 rooms with every person on the payroll. Everything said here
           is persisted in PostgreSQL — and each person remembers your past
-          conversations next time you meet.
+          conversations next time you meet.{" "}
+          <a href="/business" className="underline underline-offset-4 hover:text-foreground">
+            ← Boardroom
+          </a>
         </p>
       </header>
 
