@@ -576,8 +576,23 @@
         }
 
     </style>
+<link rel="stylesheet" href="/theme.css" />
 </head>
 <body>
+<div id="xnav">
+  <a class="brand" href="/">FreeLLM·AI</a>
+  <a class="xlink" href="/playground">Playground</a><a class="xlink" href="/debate">Debate</a><a class="xlink" href="/knowledge">Knowledge</a><a class="xlink" href="/business">Business</a>
+  <span class="spacer"></span>
+  <a class="xlink" href="http://localhost:18443/business">Business Console ↗</a>
+</div>
+<script>
+(function(){
+  var here = location.pathname;
+  document.querySelectorAll('#xnav a.xlink').forEach(function(a){
+    if (a.getAttribute('href') === here) a.classList.add('current');
+  });
+})();
+</script>
 <nav style="position:fixed;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:300;background:rgba(13,18,28,.92);border:1px solid rgba(255,255,255,.10);border-radius:30px;padding:7px 12px;backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.35)">
     <a href="/debate" style="color:#94a3b8;text-decoration:none;font-size:.8rem;font-weight:600;padding:4px 10px;border-radius:20px;">Debate</a>
     <a href="/knowledge" style="color:#94a3b8;text-decoration:none;font-size:.8rem;font-weight:600;padding:4px 10px;border-radius:20px;">Knowledge</a>

@@ -1,0 +1,114 @@
+/* ============================================================
+   theme.css — shared design language for the Express-served
+   surfaces (/debate /personal /knowledge /business).
+
+   Mirrors the Next.js console theme (console/app/globals.css,
+   dark mode) so every part of the project looks like one app:
+   same slate-dark palette, indigo accent, mono labels.
+   Loaded AFTER each page's inline <style> — variable overrides
+   win without rewriting the pages.
+   ============================================================ */
+
+:root {
+  /* console dark tokens */
+  --bg-page:      hsl(220 16% 6%);
+  --bg-surface-c: hsl(220 14% 9%);
+  --bg-elevated:  hsl(220 12% 13%);
+  --bg-inset:     hsl(220 10% 17%);
+
+  --fg-hi:        hsl(220 10% 96%);
+  --fg-mid:       hsl(220 8% 72%);
+  --fg-low:       hsl(220 6% 44%);
+
+  --accent:       hsl(252 80% 68%);
+  --accent-dimc:  hsl(252 50% 30%);
+  --ok:           hsl(152 60% 45%);
+  --warn:         hsl(38 80% 55%);
+  --err:          hsl(4 70% 56%);
+  --line:         hsl(220 12% 18%);
+
+  /* map the legacy variable names used by these pages */
+  --bg-base:            var(--bg-page);
+  --bg-surface:         var(--bg-surface-c);
+  --bg-surface-hi:      var(--bg-elevated);
+  --bg-surface-active:  var(--bg-inset);
+  --primary:            var(--accent);
+  --primary-dim:        hsl(252 50% 30% / 0.35);
+  --secondary:          hsl(210 70% 56%);
+  --secondary-dim:      hsl(210 50% 18% / 0.4);
+  --text-main:          var(--fg-hi);
+  --text-muted:         var(--fg-mid);
+  --text-subtle:        var(--fg-low);
+  --border-light:       1px solid var(--line);
+  --glass-bg:           hsl(220 14% 9% / 0.85);
+}
+
+html { color-scheme: dark; }
+
+body {
+  background:
+    radial-gradient(circle at 15% 0%, hsl(252 60% 20% / 0.12), transparent 40%),
+    radial-gradient(circle at 85% 100%, hsl(210 60% 18% / 0.10), transparent 40%),
+    var(--bg-page) !important;
+  color: var(--fg-hi);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+code, pre, .font-mono, .mono {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+h1, h2, h3 { letter-spacing: -0.01em; }
+
+/* Cards & inputs inherit the flatter console look */
+input, select, textarea {
+  background: var(--bg-inset) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--fg-hi) !important;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px hsl(252 80% 68% / 0.25) !important;
+}
+
+button {
+  font-family: inherit;
+}
+button.primary, button[type="submit"], .btn-primary {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: white !important;
+}
+button.primary:hover, .btn-primary:hover { filter: brightness(1.1); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-inset); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(220 10% 24%); }
+
+::selection { background: hsl(252 80% 68% / 0.35); }
+
+/* ── Shared top navigation (injected into every template surface) ── */
+#xnav {
+  position: sticky; top: 0; z-index: 9999;
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 16px;
+  background: hsl(220 14% 9% / 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+}
+#xnav .brand {
+  font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--fg-mid); margin-right: 12px; text-decoration: none;
+}
+#xnav a.xlink {
+  color: var(--fg-low); text-decoration: none;
+  padding: 5px 10px; border-radius: 6px; transition: all .15s;
+}
+#xnav a.xlink:hover { color: var(--fg-hi); background: var(--bg-inset); }
+#xnav a.xlink.current { color: white; background: hsl(252 50% 30% / 0.45); }
+#xnav .spacer { flex: 1; }
+

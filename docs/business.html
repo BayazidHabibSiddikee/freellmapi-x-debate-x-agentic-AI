@@ -117,8 +117,23 @@
         .status { font-size:.8rem; color:var(--primary); } .status.err { color:var(--danger); }
         .statusbar { min-height:20px; }
     </style>
+<link rel="stylesheet" href="/theme.css" />
 </head>
 <body>
+<div id="xnav">
+  <a class="brand" href="/">FreeLLM·AI</a>
+  <a class="xlink" href="/playground">Playground</a><a class="xlink" href="/debate">Debate</a><a class="xlink" href="/personal">Personal</a><a class="xlink" href="/knowledge">Knowledge</a>
+  <span class="spacer"></span>
+  <a class="xlink" href="http://localhost:18443/business">Business Console ↗</a>
+</div>
+<script>
+(function(){
+  var here = location.pathname;
+  document.querySelectorAll('#xnav a.xlink').forEach(function(a){
+    if (a.getAttribute('href') === here) a.classList.add('current');
+  });
+})();
+</script>
     <div class="topbar">
         <div class="brand"><i class="ri-briefcase-4-line"></i><h1>Business HQ</h1></div>
         <nav class="nav">
