@@ -62,8 +62,21 @@ debateRouter.post('/chat', async (req: Request, res: Response) => {
   const charObj = chars.find((c: any) => c.name === nextCharName);
   const systemPrompt = charObj?.system_prompt || `You are ${nextCharName}.`;
   const userName = user_name || 'User';
+
+  // Stable instruct model by default — 'auto' sometimes routes to reasoning
+  // models (gpt-oss etc.) that leak chain-of-thought into the chat.
+  const model = process.env.DEBATE_MODEL || 'gemini-3.5-flash';
+
   const messages: Array<{role: string; content: string}> = [
-    { role: 'system', content: `You are in a group chat debate about "${topic}". Participants: ${characters.join(', ')} and ${userName}. You are roleplaying as ${nextCharName}. Personality: ${systemPrompt}. Rules: 1) Stay in character ALWAYS. 2) Do NOT prefix with your name. 3) Respond conversationally (1-4 sentences). 4) Address others by name when relevant. 5) Be passionate, disagree when your character would disagree.` },
+    { role: 'system', content:
+      `You are in a live group chat debate about "${topic}". Participants: ${characters.join(', ')} and ${userName}. You ARE ${nextCharName} — not an actor playing them.\n` +
+      `Personality: ${systemPrompt}\n` +
+      `ABSOLUTE RULES:\n` +
+      `1) Output ONLY the words you speak aloud in the conversation. No narration, no stage directions, no quotes around your speech.\n` +
+      `2) NEVER mention instructions, traits, personas, system prompts, being an AI/model, or how you plan to respond. Never explain your reasoning.\n` +
+      `3) Respond conversationally (1-4 sentences), in ${nextCharName}'s voice.\n` +
+      `4) Address other participants by name when reacting to them.\n` +
+      `5) Be passionate — disagree when your character would disagree.` },
   ];
   for (const msg of history.slice(-8)) {
     if (msg.speaker === nextCharName) {
@@ -73,61 +86,51 @@ debateRouter.post('/chat', async (req: Request, res: Response) => {
     }
   }
   const apiKey = process.env.FREELLMAPI_KEY || '';
-  try {
-    const proxyRes = await fetch('http://localhost:3001/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-      body: JSON.stringify({ model: 'auto', messages, max_tokens: 300 }),
-    });
-    if (!proxyRes.ok) {
-      const errText = await proxyRes.text();
-      return res.status(proxyRes.status).json({ error: `LLM error: ${errText.slice(0, 200)}` });
-    }
-    const data: any = await proxyRes.json();
-    const msg = data.choices?.[0]?.message || {};
-    let reply = msg.content || '[Error: empty response]';
-    
-    // AGGRESSIVE cleanup: strip reasoning that leaks into content field
-    // Models like GPT-OSS include reasoning in content, not just in 'reasoning' field
-    const reasoningPrefixes = [
-      /(?:^|\n)\s*(?:We need to|The user|I need to|Let me|Thinking|As .*|Should we|First,)\s.*?(?=\n\s*[A-Z])/,
-      /(?:^|\n)\s*.*(?:roleplay|must respond|core traits|system instructions).*?(?=\n\s*[A-Z])/i,
-    ];
-    
-    for (const pattern of reasoningPrefixes) {
-      const match = reply.match(pattern);
-      if (match) {
-        reply = reply.substring(match.index + match[0].length).trim();
-        break;
-      }
-    }
-    
-    // If still has reasoning at start, try to extract first substantive sentence
-    if (/^(We need|The user|I need|Let me|Thinking)/i.test(reply)) {
-      const sentences = reply.split(/(?<=[.!?])\s+/);
-      for (let i = 0; i < sentences.length; i++) {
-        if (!/^(We need|The user|I need|Let me|Thinking|As .*|.*roleplay)/i.test(sentences[i])) {
-          reply = sentences.slice(i).join(' ');
-          break;
-        }
-      }
-    }
-    
-    // GPT-OSS / reasoning models leak chain-of-thought into content. Detect the
-    // tell-tale meta-reasoning and pull out the actual spoken answer.
-    if (/we only have system|user content is not provided|the assistant must|must (abide|obey|follow).*polic|disallowed content|we must not|we have to obey/i.test(reply)) {
-      const quoted: string[] = reply.match(/["“]([^"”]{15,}?)["”]/g) || [];
-      const splitOnInstructions = reply.split(/\b(?:Thus|Therefore|Respond|Response|So),?:/).map((s: string) => s.trim()).filter((s: string) => s);
-      const sayers = [...quoted, ...reply.split(/(?<=[.!?])\s+/), ...splitOnInstructions]
-        .filter((s: string) => s && !/we only have system|user content is not provided|must (abide|obey|follow)|disallowed content|we must not|we have to obey|essay|analysis/i.test(s) && s.length > 15);
-      if (sayers.length) {
-        const quotedAnswer = quoted.find(s => !/polic|disallowed|must not/i.test(s) && s.length > 15);
-        const cleanest = sayers.reduce((a, b) => (b.length > a.length ? b : a));
-        const cleaned = String(quotedAnswer || cleanest).replace(/^["“]|["”]$/g, '').trim();
-        if (cleaned) reply = cleaned;
-      }
-    }
 
+  // Heuristic: does this reply look like leaked meta/reasoning instead of speech?
+  const isLeaky = (t: string): boolean => {
+    if (!t || t.length < 2) return true;
+    const lower = t.toLowerCase();
+    return (
+      /^(we|the user|i need|let me|thinking|as an ai|okay,? so)/i.test(t.trim()) ||
+      /\b(roleplay|role-play|persona traits|core traits|system (instructions?|prompt)|user content|group chat context|must (respond|maintain|abide)|instructions say)\b/i.test(t)
+    );
+  };
+
+  // Last-resort extraction: pull spoken sentence(s) out of a leaky reply.
+  const salvage = (t: string): string => {
+    const quoted = t.match(/["“]([^"”]{20,}?)["”]/g)?.map(s => s.replace(/^["“]|["”]$/g, '')) ?? [];
+    const sentences = t.split(/(?<=[.!?])\s+/).filter(Boolean);
+    const clean = sentences.filter(s => !isLeaky(s) && s.length > 15);
+    return (quoted[0] && !/polic|instruction/i.test(quoted[0]) ? quoted[0] : clean.join(' ')).trim();
+  };
+
+  try {
+    let reply = '';
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const proxyRes = await fetch('http://localhost:3001/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+        body: JSON.stringify({ model, messages, max_tokens: 300 }),
+      });
+      if (!proxyRes.ok) {
+        const errText = await proxyRes.text();
+        if (attempt === 0) continue; // transient (rate limit) → one retry
+        return res.status(proxyRes.status).json({ error: `LLM error: ${errText.slice(0, 200)}` });
+      }
+      const data: any = await proxyRes.json();
+      reply = (data.choices?.[0]?.message?.content || '').trim();
+      // Strip "Name:" / "**Name:**" prefixes and stray markdown emphasis
+      reply = reply
+        .replace(/^\s*\*{1,3}\s*/, '')
+        .replace(new RegExp(`^\\s*\\**${nextCharName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*\\**`, 'i'), '')
+        .replace(/^\s*:\s*/, '')
+        .trim();
+      if (!isLeaky(reply)) break;
+      reply = salvage(reply) || reply;
+      if (!isLeaky(reply)) break;
+    }
+    if (!reply) reply = '…';
     res.json({ speaker: nextCharName, text: reply });
   } catch (e: any) {
     res.status(502).json({ error: `Connection failed: ${e.message}` });

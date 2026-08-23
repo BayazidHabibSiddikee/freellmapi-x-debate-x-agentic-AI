@@ -30,7 +30,7 @@ from activity import log_event
 HOME = Path.home()
 
 FREELLM_BASE = os.environ.get("FREELLM_API_BASE", "http://localhost:3001/v1")
-JUDGE_MODEL = os.environ.get("JUDGE_MODEL", os.environ.get("FREELLM_MODEL", "auto"))
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", os.environ.get("FREELLM_MODEL", "gemini-3.5-flash"))
 DISPATCH_TIMEOUT = int(os.environ.get("DISPATCH_TIMEOUT", "900"))
 CLAUDE_FLAGS = os.environ.get("CLAUDE_FLAGS", "").split()
 OPENCODE_FLAGS = os.environ.get("OPENCODE_FLAGS", "").split()

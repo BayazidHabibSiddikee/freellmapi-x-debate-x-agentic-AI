@@ -63,7 +63,7 @@ export type BusinessSettings = {
 };
 
 export const DEFAULT_SETTINGS: BusinessSettings = {
-  model: "auto",
+  model: "gemini-3.5-flash",
   temperature: 0.8,
   max_tokens: 500,
   history_turns: 6,

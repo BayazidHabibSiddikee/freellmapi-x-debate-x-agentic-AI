@@ -1,5 +1,5 @@
 {
-  "model": "auto",
+  "model": "gemini-3.5-flash",
   "temperature": 0.7,
   "max_tokens": 500,
   "history_turns": 6,
