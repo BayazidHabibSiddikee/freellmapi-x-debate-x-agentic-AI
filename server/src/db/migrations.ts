@@ -45,7 +45,24 @@ export function migrateDbSchema(db: Database.Database) {
   applyModelPricing(db);
   migrateEmbeddingsV1(db);
   migrateQuirksV1(db);
+  migrateMemoriesV1(db);
   ensureUnifiedKey(db);
+}
+
+/** Phase 1 industry architecture: episodic colleague memories. */
+function migrateMemoriesV1(db: Database.Database) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS persona_memories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      observer TEXT,
+      subject TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'statement',
+      content TEXT NOT NULL,
+      source_topic TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_persona_memories_subject ON persona_memories(subject, id DESC);
+  `);
 }
 
 function createTables(db: Database.Database) {

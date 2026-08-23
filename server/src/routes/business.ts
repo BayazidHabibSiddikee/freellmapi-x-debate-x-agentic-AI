@@ -16,6 +16,10 @@ import {
 } from '../services/rag.js';
 import { sendOk, sendError } from '../lib/envelope.js';
 import { toolsForRole, buildToolBlock, parseToolCall } from '../lib/business-tools.js';
+import {
+  buildColleagueKnowledgeBlock, recordStatement,
+  listMemories, forgetMemory,
+} from '../services/memory.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -177,10 +181,14 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
   // get a tool block; everyone else must answer from knowledge alone.
   const toolBlock = buildToolBlock(role?.id);
 
+  // Phase 1 industry memory: what this character's colleagues have learned
+  // about each other from past meetings — injected so relationships persist.
+  const colleagueBlock = buildColleagueKnowledgeBlock(participants, speaker);
+
   // RAG context from the hybrid knowledge library (retrieved for this topic).
   const ragContext = use_rag ? buildRagContext(`${topic} ${history?.slice(-3).map(h => h.text).join(' ')}`, 4) : '';
 
-  const base = `You are in a business strategy meeting about "${topic}". Participants: ${participants.join(', ')} and ${user_name || 'User'}. You are speaking as ${speaker}.\n\nCharacter identity: ${charPrompt}${roleBlock}${toolBlock}\n\n` +
+  const base = `You are in a business strategy meeting about "${topic}". Participants: ${participants.join(', ')} and ${user_name || 'User'}. You are speaking as ${speaker}.\n\nCharacter identity: ${charPrompt}${roleBlock}${toolBlock}${colleagueBlock}\n\n` +
     `Meeting rules: 1) Stay in character ALWAYS — keep your personality, tone and quirks. 2) Operate from within your assigned business role (if any). 3) Do NOT prefix with your name. 4) Respond naturally — short when conversational, long and detailed when the task needs depth (e.g. code or analysis). 5) Be decisive, give your point of view, and address others by name when relevant.${ragContext}`;
 
   // Token budget is generous and client-tunable: coding/analysis answers need
@@ -279,7 +287,18 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
       }
     }
 
-    return sendOk(res, { speaker, role: role ? role.name : null, text: reply, rag: { applied: ragContext.length > 0 }, tool_used: toolUsed });
+    // Phase 1 memory write-behind: the statement becomes an episodic memory
+    // ABOUT the speaker, retrievable by colleagues in future meetings.
+    let memoryId: number | null = null;
+    try {
+      memoryId = recordStatement(speaker, reply, topic).id;
+    } catch { /* memory is best-effort — never break the chat */ }
+
+    return sendOk(res, {
+      speaker, role: role ? role.name : null, text: reply,
+      rag: { applied: ragContext.length > 0 }, tool_used: toolUsed,
+      memory_id: memoryId,
+    });
   } catch (e: any) {
     return sendError(res, 502, `Connection failed: ${e.message}`, {
       hint: 'The LLM proxy at localhost:3001 is unreachable — start the server (npm run dev) and retry.',
@@ -368,6 +387,18 @@ businessRouter.post('/search', (req: Request, res: Response) => {
   const topK = Math.min(20, Math.max(1, body.top_k || 6));
   const results = hybridSearch(query, topK);
   return sendOk(res, { count: results.length, results, pagination: { total: results.length, limit: topK } });
+});
+
+// GET /business/api/memories — what the team has learned about itself
+businessRouter.get('/memories', (_req: Request, res: Response) => {
+  return sendOk(res, { memories: listMemories(200), total: listMemories(10_000).length });
+});
+
+// DELETE /business/api/memories/:id — forget one memory
+businessRouter.delete('/memories/:id', (req: Request, res: Response) => {
+  const ok = forgetMemory(Number(req.params.id));
+  if (!ok) return sendError(res, 404, 'Memory not found', { hint: 'GET /business/api/memories lists valid ids.', retryable: false });
+  return sendOk(res, { forgotten: true });
 });
 
 // GET /business/api/health
