@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  nexus-debate:
+    build: .
+    container_name: nexus_debate_app
+    ports:
+      - "5050:5050"
+      - "5080:5080"
+    volumes:
+      - ./storage:/app/storage
+      - ./images:/app/images
+      - ./doc:/app/doc
+      - ./code:/app/code
+    env_file:
+      - .env
+    restart: unless-stopped

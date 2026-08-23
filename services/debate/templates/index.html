@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sword Debate - AI Research Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #06090e;
+            --bg-surface: #0d121c;
+            --primary: #00e5ff;
+            --secondary: #ff007f;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-light: rgba(255, 255, 255, 0.08);
+            --primary-glow: 0 0 20px rgba(0, 229, 255, 0.4);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 229, 255, 0.05), transparent 30%),
+                radial-gradient(circle at 85% 30%, rgba(255, 0, 127, 0.05), transparent 30%);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 680px;
+            padding: 50px;
+            background: rgba(13, 18, 28, 0.6);
+            border: 1px solid var(--border-light);
+            border-radius: 24px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .icon-hero {
+            font-size: 4rem;
+            color: var(--primary);
+            text-shadow: var(--primary-glow);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--text-main), var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        p {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            line-height: 1.6;
+            font-weight: 400;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--primary);
+            color: #000;
+            text-decoration: none;
+            padding: 16px 36px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 20px rgba(0, 229, 255, 0.25);
+        }
+
+        .btn:hover {
+            background: #33eeff;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 229, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border-light);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .badges {
+            margin-top: 40px;
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+        
+        .badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-base);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <i class="ri-blaze-fill icon-hero"></i>
+        <h1>Sword Debate</h1>
+        <p>A unified platform for simulating synthetic character conversations and generating deep multi-agent research data.</p>
+        
+        <div class="btn-group" style="flex-wrap: wrap;">
+            <a href="/chat" class="btn"><i class="ri-play-circle-fill"></i> Group Debate</a>
+            <a href="/personal" class="btn" style="background: var(--secondary);"><i class="ri-user-heart-fill"></i> Personal Chat</a>
+            <a href="/knowledge" class="btn btn-secondary" style="background: rgba(0, 229, 255, 0.1); border-color: var(--primary);"><i class="ri-book-read-fill"></i> Knowledge</a>
+            <a href="/news" class="btn btn-secondary" style="background: rgba(255, 0, 127, 0.1); border-color: var(--secondary);"><i class="ri-global-line"></i> News</a>
+            <a href="/api/dataset" class="btn btn-secondary" style="background: rgba(251, 191, 36, 0.1); border-color: #fbbf24;"><i class="ri-database-2-line"></i> Dataset</a>
+        </div>
+        
+        <div class="badges">
+            <div class="badge"><i class="ri-cpu-line" style="color: var(--primary);"></i> FreeLLM API Active</div>
+            <div class="badge"><i class="ri-database-2-line" style="color: var(--secondary);"></i> RAG Indexed</div>
+            <div class="badge"><i class="ri-flashlight-line" style="color: #fbbf24;"></i> FastAPI Backend</div>
+        </div>
+    </div>
+
+</body>
+</html>
