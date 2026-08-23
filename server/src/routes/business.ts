@@ -14,6 +14,7 @@ import {
   indexDocument, listDocuments, deleteDocument, hybridSearch,
   buildRagContext, getDocument, LIBRARY_DIR,
 } from '../services/rag.js';
+import { sendOk, sendError } from '../lib/envelope.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -102,7 +103,7 @@ export const businessRouter = Router();
 businessRouter.get('/config', (_req: Request, res: Response) => {
   const cfg = loadConfig();
   const chars = loadCharacters().map((c: any) => ({ id: c.id, name: c.name, image: c.image || null }));
-  res.json({ roles: cfg.roles, assignments: cfg.assignments, characters: chars });
+  return sendOk(res, { roles: cfg.roles, assignments: cfg.assignments, characters: chars });
 });
 
 // PUT /business/api/config
@@ -112,12 +113,12 @@ businessRouter.put('/config', (req: Request, res: Response) => {
   if (Array.isArray(body.roles)) cfg.roles = body.roles;
   if (body.assignments && typeof body.assignments === 'object') cfg.assignments = body.assignments;
   saveConfig(cfg);
-  res.json({ success: true, roles: cfg.roles, assignments: cfg.assignments });
+  return sendOk(res, { roles: cfg.roles, assignments: cfg.assignments });
 });
 
 // GET /business/api/roles — the role catalog for assignment dropdowns
 businessRouter.get('/roles', (_req: Request, res: Response) => {
-  res.json({ roles: loadConfig().roles });
+  return sendOk(res, { roles: loadConfig().roles });
 });
 // --- business meeting chat -----------------------------------------------------
 
@@ -152,7 +153,10 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
   };
   const { topic, participants, history, user_name, mode, forced_speaker, use_rag } = body;
   if (!participants || participants.length === 0) {
-    return res.status(400).json({ error: 'No participants selected' });
+    return sendError(res, 400, 'No participants selected', {
+      hint: 'POST /business/api/chat { topic: string, participants: string[] (min 1), history?: [{speaker,text}] }',
+      retryable: true,
+    });
   }
   const cfg = loadConfig();
   const speaker = nextSpeaker(participants, history || [], mode || 'round_robin', forced_speaker);
@@ -188,7 +192,10 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
     });
     if (!proxyRes.ok) {
       const errText = await proxyRes.text();
-      return res.status(proxyRes.status).json({ error: `LLM error: ${errText.slice(0, 200)}` });
+      return sendError(res, proxyRes.status, `LLM error: ${errText.slice(0, 200)}`, {
+        hint: 'The upstream LLM proxy rejected the completion — verify the model catalog and API key, then retry.',
+        retryable: true,
+      });
     }
     const data: any = await proxyRes.json();
     const msg = data.choices?.[0]?.message || {};
@@ -229,9 +236,12 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
       }
     }
 
-    res.json({ speaker, role: role ? role.name : null, text: reply, rag: { applied: ragContext.length > 0 } });
+    return sendOk(res, { speaker, role: role ? role.name : null, text: reply, rag: { applied: ragContext.length > 0 } });
   } catch (e: any) {
-    res.status(502).json({ error: `Connection failed: ${e.message}` });
+    return sendError(res, 502, `Connection failed: ${e.message}`, {
+      hint: 'The LLM proxy at localhost:3001 is unreachable — start the server (npm run dev) and retry.',
+      retryable: true,
+    });
   }
 });
 // --- knowledge library (RAG upload + hybrid search) -----------------------------
@@ -239,7 +249,7 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
 // GET /business/api/rag_report — indexed library summary (reused by Knowledge page)
 businessRouter.get('/rag_report', (_req: Request, res: Response) => {
   const docs = listDocuments();
-  res.json({
+  return sendOk(res, {
     total: docs.length,
     indexed: docs.map((d) => d.name),
     documents: docs,
@@ -248,13 +258,13 @@ businessRouter.get('/rag_report', (_req: Request, res: Response) => {
 
 // GET /business/api/library
 businessRouter.get('/library', (_req: Request, res: Response) => {
-  res.json({ documents: listDocuments() });
+  return sendOk(res, { documents: listDocuments() });
 });
 
 businessRouter.post('/upload', express.raw({ type: ['multipart/form-data'], limit: '30mb' }), (req: Request, res: Response) => {
   const contentType = req.headers['content-type'] || '';
   const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;\s]+))/);
-  if (!boundaryMatch) return res.status(400).json({ error: 'Invalid content type' });
+  if (!boundaryMatch) return sendError(res, 400, 'Invalid content type', { hint: 'Send multipart/form-data with a boundary and a "file" part.', retryable: true });
   const boundary = boundaryMatch[1] || boundaryMatch[2];
   const rawBody = req.body as Buffer;
 
@@ -275,50 +285,51 @@ businessRouter.post('/upload', express.raw({ type: ['multipart/form-data'], limi
     fileData = body.length ? body : null;
     break;
   }
-  if (!fileData || !filename) return res.status(400).json({ error: 'No file provided' });
+  if (!fileData || !filename) return sendError(res, 400, 'No file provided', { hint: 'Include a multipart part named "file".', retryable: true });
   const allowed = /\.(md|txt|docx|pdf|html|json|markdown|csv)$/i;
-  if (!allowed.test(filename)) return res.status(400).json({ error: 'Unsupported file type (use .md, .txt, .docx, .pdf, .html, .json, .csv)' });
-  if (fileData.length > 25 * 1024 * 1024) return res.status(413).json({ error: 'File too large (max 25MB)' });
+  if (!allowed.test(filename)) return sendError(res, 400, 'Unsupported file type (use .md, .txt, .docx, .pdf, .html, .json, .csv)', { hint: 'Convert the document to one of the supported extensions and retry.', retryable: true });
+  if (fileData.length > 25 * 1024 * 1024) return sendError(res, 413, 'File too large (max 25MB)', { hint: 'Split the document into smaller parts and upload each separately.', retryable: false });
 
   const doc = indexDocument(filename, fileData);
-  res.json({ status: 'success', message: `Indexed "${doc.name}" (${doc.chunks.length} chunks)`, id: doc.id, ...(doc.note ? { note: doc.note } : {}) });
+  return sendOk(res, { status: 'success', message: `Indexed "${doc.name}" (${doc.chunks.length} chunks)`, id: doc.id, ...(doc.note ? { note: doc.note } : {}) });
 });
 
 // GET /business/api/library/:id — doc metadata + full text
 businessRouter.get('/library/:id', (req: Request, res: Response) => {
   const doc = getDocument(String(req.params.id));
-  if (!doc) return res.status(404).json({ error: 'Document not found' });
-  res.json({ id: doc.id, name: doc.name, ext: doc.ext, size: doc.size, uploadedAt: doc.uploadedAt, note: doc.note, text: doc.text });
+  if (!doc) return sendError(res, 404, 'Document not found', { hint: 'GET /business/api/library lists valid ids.', retryable: false });
+  return sendOk(res, { id: doc.id, name: doc.name, ext: doc.ext, size: doc.size, uploadedAt: doc.uploadedAt, note: doc.note, text: doc.text });
 });
 
 // GET /business/api/library/:id/file — serve the original uploaded bytes
 businessRouter.get('/library/:id/file', (req: Request, res: Response) => {
   const doc = getDocument(String(req.params.id));
-  if (!doc) return res.status(404).json({ error: 'Document not found' });
+  if (!doc) return sendError(res, 404, 'Document not found', { hint: 'GET /business/api/library lists valid ids.', retryable: false });
   const p = path.join(LIBRARY_DIR, 'files', `${doc.id}${doc.ext}`);
-  if (!fs.existsSync(p)) return res.status(404).json({ error: 'File missing' });
+  if (!fs.existsSync(p)) return sendError(res, 404, 'File missing', { hint: 'Metadata exists but the original bytes were removed — re-upload the document.', retryable: true });
   res.sendFile(p);
 });
 
 // DELETE /business/api/library/:id
 businessRouter.delete('/library/:id', (req: Request, res: Response) => {
   const ok = deleteDocument(String(req.params.id));
-  if (!ok) return res.status(404).json({ error: 'Document not found' });
-  res.json({ success: true });
+  if (!ok) return sendError(res, 404, 'Document not found', { hint: 'GET /business/api/library lists valid ids.', retryable: false });
+  return sendOk(res, { deleted: true });
 });
 
 // POST /business/api/search — hybrid BM25 + embeddings retrieval
 businessRouter.post('/search', (req: Request, res: Response) => {
   const body = req.body as { query?: string; top_k?: number };
   const query = (body.query || '').trim();
-  if (!query) return res.status(400).json({ error: 'Missing query' });
-  const results = hybridSearch(query, Math.min(20, Math.max(1, body.top_k || 6)));
-  res.json({ count: results.length, results });
+  if (!query) return sendError(res, 400, 'Missing query', { hint: 'POST /business/api/search { query: string, top_k?: number }', retryable: true });
+  const topK = Math.min(20, Math.max(1, body.top_k || 6));
+  const results = hybridSearch(query, topK);
+  return sendOk(res, { count: results.length, results, pagination: { total: results.length, limit: topK } });
 });
 
 // GET /business/api/health
 businessRouter.get('/health', (_req: Request, res: Response) => {
-  res.json({
+  return sendOk(res, {
     status: 'operational',
     roles: loadConfig().roles.length,
     characters: loadCharacters().length,
