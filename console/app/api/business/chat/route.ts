@@ -7,6 +7,7 @@ import {
   composeSystemPrompt,
   ragContext,
   generateTurn,
+  activeProject,
   type BusinessRole,
 } from "@/lib/business";
 
@@ -34,12 +35,24 @@ export async function POST(req: NextRequest) {
   const settings = getSettings();
 
   // Resolve the speaker:
+  //   0. active project members (if a project is selected and staffed)
   //   1. explicit character_id
   //   2. requested role's members, round-robined by history length
   //   3. any assigned role's first member
+  const project = activeProject();
+  const projectStaffed = Boolean(project && project.assignments.length > 0);
   let role: BusinessRole | undefined = body.role;
   let characterId: string | undefined = body.character_id;
 
+  if (!characterId && projectStaffed) {
+    const list = project!.assignments;
+    const pick = list[(body.history?.length ?? 0) % list.length];
+    characterId = (
+      body.role ? list.find((a) => a.role === body.role)?.character_id : undefined
+    ) ?? pick.character_id;
+    role = (list.find((a) => a.character_id === characterId)?.role ??
+      "Member") as BusinessRole;
+  }
   if (!characterId && role) {
     const cfg = getRoles()[role];
     characterId =
@@ -47,7 +60,7 @@ export async function POST(req: NextRequest) {
         ? cfg.members[(body.history?.length ?? 0) % cfg.members.length]
         : undefined;
   }
-  if (!characterId) {
+  if (!characterId && !projectStaffed) {
     const roles = getRoles();
     for (const [r, cfg] of Object.entries(roles)) {
       if (cfg.members.length) {
@@ -60,7 +73,7 @@ export async function POST(req: NextRequest) {
 
   if (!characterId) {
     return NextResponse.json(
-      { error: "no characters assigned to any role yet — assign some in the Roles card" },
+      { error: "no speakers available — assign characters to roles or to the active project" },
       { status: 409 },
     );
   }
@@ -76,16 +89,22 @@ export async function POST(req: NextRequest) {
       knowledge = await ragContext(topic, settings.rag_k);
     }
 
-    // Peers sharing the same role (multi-member roles coordinate)
-    const peers = role
-      ? getRoles()[role].members
-          .filter((id) => id !== character.id)
-          .map(getCharacter)
-          .filter((c): c is NonNullable<typeof c> => Boolean(c))
-      : [];
+    // Peers: same-role members globally + other teammates on the active project
+    const peerIds = new Set<string>(
+      getRoles()[role]?.members.filter((id) => id !== character.id) ?? [],
+    );
+    for (const a of project?.assignments ?? []) {
+      if (a.character_id !== character.id) peerIds.add(a.character_id);
+    }
+    const peers = [...peerIds]
+      .map(getCharacter)
+      .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
     const systemPrompt =
       composeSystemPrompt(role, character, peers) +
+      (project
+        ? `\n\nThe team's current project is "${project.name}", rooted at ${project.folder}. Keep discussion relevant to this codebase/folder.`
+        : "") +
       (knowledge
         ? `\nUse this retrieved knowledge when relevant and name the source:\n${knowledge}`
         : "");

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateToken } from "@/lib/auth";
-import { getRoles } from "@/lib/business";
+import { getRoles, activeProject } from "@/lib/business";
 
 const AGENT_URL = process.env.AGENT_TOOLS_URL ?? "http://localhost:5090";
 
@@ -19,11 +19,17 @@ export async function POST(req: NextRequest) {
 
   // Hint the judge with each role's pinned workspace
   const roles = getRoles();
-  const workspaces = Object.fromEntries(
+  const workspaces: Record<string, string> = Object.fromEntries(
     Object.entries(roles)
       .filter(([, cfg]) => cfg.workspace && cfg.members.length > 0)
       .map(([r, cfg]) => [r, cfg.workspace as string]),
   );
+
+  // Active project folder takes priority as the dispatch target
+  const project = activeProject();
+  if (project) {
+    workspaces["active project"] = project.folder;
+  }
 
   try {
     const res = await fetch(`${AGENT_URL}/judge`, {

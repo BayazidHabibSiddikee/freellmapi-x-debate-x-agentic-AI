@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest) {
   const allowed = [
     "model", "temperature", "max_tokens", "history_turns", "rag_k",
     "use_rag", "dispatch_agent_default", "dispatch_timeout_seconds",
-    "allow_file_writes",
+    "allow_file_writes", "active_project",
   ] as const;
   const clean: Partial<BusinessSettings> = {};
   for (const key of allowed) {

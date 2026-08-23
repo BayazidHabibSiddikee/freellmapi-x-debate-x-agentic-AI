@@ -9,6 +9,7 @@ import { Briefcase, Loader2, Send, RefreshCw, Gavel, Rocket } from "lucide-react
 import { Avatar, tokenQS, type Character } from "./avatar";
 import { RolesCard, type RoleConfig } from "./roles-card";
 import { CharactersBrowser } from "./characters-browser";
+import { ProjectsCard, type Project } from "./projects-card";
 import { LogsCard } from "./logs-card";
 import { SettingsCard, type Settings } from "./settings-card";
 
@@ -18,6 +19,7 @@ type Roster = {
   roles: Record<string, RoleConfig>;
   role_list: string[];
   settings: Settings;
+  projects?: Project[];
 };
 
 export default function BusinessPage() {
@@ -210,6 +212,14 @@ export default function BusinessPage() {
             body: JSON.stringify({ role, add: characterId }),
           }).then(load);
         }}
+      />
+
+      <ProjectsCard
+        tokenQS={tokenQS}
+        characters={roster.characters}
+        projects={roster.projects ?? []}
+        activeId={roster.settings?.active_project ?? null}
+        onChanged={load}
       />
 
       <SettingsCard tokenQS={tokenQS} settings={roster.settings} onSaved={load} />

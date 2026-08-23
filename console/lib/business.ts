@@ -60,6 +60,7 @@ export type BusinessSettings = {
   dispatch_agent_default: "claude" | "opencode";
   dispatch_timeout_seconds: number;
   allow_file_writes: boolean;
+  active_project: string | null;
 };
 
 export const DEFAULT_SETTINGS: BusinessSettings = {
@@ -72,6 +73,7 @@ export const DEFAULT_SETTINGS: BusinessSettings = {
   dispatch_agent_default: "claude",
   dispatch_timeout_seconds: 900,
   allow_file_writes: false,
+  active_project: null,
 };
 
 export const BUSINESS_ROLES = [
@@ -220,6 +222,94 @@ export function composeSystemPrompt(
       ? `\n\nYou share this role with: ${peers.map((p) => p.name).join(", ")}. Coordinate; don't duplicate their points.`
       : "";
   return `${ROLE_PROMPTS[role]}${peerNote}\n\nYour name is ${character.name}. Your persona:\n${character.system_prompt ?? ""}`;
+}
+
+// ── Projects (folder + team assignment) ───────────────────────────────────────
+
+export type ProjectAssignment = {
+  character_id: string;
+  role: BusinessRole | "Member";
+};
+
+export type Project = {
+  id: string;
+  name: string;
+  folder: string;            // absolute path under $HOME
+  assignments: ProjectAssignment[];
+  created_at?: string;
+};
+
+const PROJECTS_PATH =
+  process.env.BUSINESS_PROJECTS_PATH ?? join(CONFIG_DIR, "projects.json");
+
+export function getProjects(): Project[] {
+  if (!existsSync(PROJECTS_PATH)) return [];
+  try {
+    const raw = JSON.parse(readFileSync(PROJECTS_PATH, "utf8"));
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getProject(id: string): Project | null {
+  return getProjects().find((p) => p.id === id) ?? null;
+}
+
+export function saveProject(input: {
+  id?: string;
+  name: string;
+  folder: string;
+  assignments?: ProjectAssignment[];
+}): Project {
+  const folder = resolveWorkspace(input.folder);
+  if (!folder) throw new Error("folder is required");
+  if (!input.name?.trim()) throw new Error("name is required");
+
+  const projects = getProjects();
+  const id =
+    input.id ??
+    `proj_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const validRoles = [...BUSINESS_ROLES, "Member"] as const;
+
+  const project: Project = {
+    id,
+    name: input.name.trim(),
+    folder,
+    assignments: (input.assignments ?? []).filter(
+      (a) =>
+        getCharacter(a.character_id) &&
+        (validRoles as readonly string[]).includes(a.role),
+    ),
+    created_at:
+      projects.find((p) => p.id === id)?.created_at ?? new Date().toISOString(),
+  };
+
+  const idx = projects.findIndex((p) => p.id === id);
+  if (idx >= 0) projects[idx] = project;
+  else projects.push(project);
+
+  ensureConfigDir();
+  writeFileSync(PROJECTS_PATH, JSON.stringify(projects, null, 2));
+  return project;
+}
+
+export function deleteProject(id: string): boolean {
+  const projects = getProjects();
+  const next = projects.filter((p) => p.id !== id);
+  if (next.length === projects.length) return false;
+  writeFileSync(PROJECTS_PATH, JSON.stringify(next, null, 2));
+  // Clear active pointer if it referenced this project
+  if (getSettings().active_project === id) {
+    saveSettings({ active_project: null });
+  }
+  return true;
+}
+
+/** The active project (settings.active_project), if any. */
+export function activeProject(): Project | null {
+  const id = getSettings().active_project;
+  return id ? getProject(id) : null;
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────

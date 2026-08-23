@@ -16,6 +16,7 @@ export type Settings = {
   dispatch_agent_default: "claude" | "opencode";
   dispatch_timeout_seconds: number;
   allow_file_writes: boolean;
+  active_project?: string | null;
 };
 
 const NUMERIC: Array<{ key: keyof Settings; label: string; step: string }> = [

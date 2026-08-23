@@ -7,5 +7,6 @@
   "use_rag": true,
   "dispatch_agent_default": "claude",
   "dispatch_timeout_seconds": 900,
-  "allow_file_writes": false
+  "allow_file_writes": false,
+  "active_project": "proj_mt66qk7qeq0k"
 }

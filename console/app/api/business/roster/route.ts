@@ -4,6 +4,7 @@ import {
   listCharacters,
   getRoles,
   getSettings,
+  getProjects,
   BUSINESS_ROLES,
   ROLE_PROMPTS,
 } from "@/lib/business";
@@ -21,5 +22,6 @@ export async function GET(req: NextRequest) {
     role_list: BUSINESS_ROLES,
     role_prompts: ROLE_PROMPTS,
     settings: getSettings(),
+    projects: getProjects(),
   });
 }
