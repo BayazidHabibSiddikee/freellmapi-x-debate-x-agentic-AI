@@ -123,6 +123,98 @@ def web_search(query: str) -> Dict[str, Any]:
     return {"query": query, "results_excerpt": markdown[:3000]}
 
 
+# ── Project-document reading (non-coders understand the repo) ─────────────────
+
+READABLE_EXTENSIONS = {".md", ".markdown", ".txt", ".rst", ".json", ".yaml", ".yml", ".cfg", ".ini", ".toml"}
+MAX_READ_BYTES = 60_000
+
+
+def _safe_under_home(path: str) -> Path:
+    home = Path.home().resolve()
+    p = Path(os.path.expanduser(path)).resolve()
+    if p != home and home not in p.parents:
+        raise PermissionError(f"path must be under {home}")
+    return p
+
+
+def read_project_docs(path: str = ".", glob: str = "**/*.md",
+                      max_chars: int = 6000) -> Dict[str, Any]:
+    """List/read documentation files (README, *.md, *.txt…) in a project folder."""
+    root = _safe_under_home(path)
+    hits: List[Dict[str, Any]] = []
+    budget = max(1000, min(max_chars, 20_000))
+    for f in sorted(root.glob(glob)):
+        if not f.is_file() or f.suffix.lower() not in READABLE_EXTENSIONS:
+            continue
+        rel = str(f.relative_to(root))
+        try:
+            text = f.read_text(encoding="utf-8", errors="ignore")[:MAX_READ_BYTES]
+        except Exception as e:  # noqa: BLE001
+            hits.append({"file": rel, "error": str(e)[:120]})
+            continue
+        excerpt = text[:budget]
+        budget -= len(excerpt)
+        hits.append({"file": rel, "chars": len(text), "excerpt": excerpt})
+        if budget <= 0:
+            break
+        if len(hits) >= 10:
+            break
+    return {"root": str(root), "files": hits}
+
+
+def read_pdf(path: str, pages: str = "") -> Dict[str, Any]:
+    """Extract text from a specific PDF under ~/ (e.g. an ingested book)."""
+    p = _safe_under_home(path)
+    if p.suffix.lower() != ".pdf":
+        raise ValueError("not a pdf")
+    try:
+        import pypdf
+    except ImportError:
+        raise RuntimeError("pypdf not installed in venv")
+    reader = pypdf.PdfReader(str(p))
+    total = len(reader.pages)
+    if pages:
+        start, end = (pages.split("-", 1) + [pages])[:2]
+        idx = range(int(start) - 1, min(int(end), total))
+    else:
+        idx = range(min(total, 8))
+    text = "\n\n".join(
+        f"[page {i+1}] {reader.pages[i].extract_text() or ''}" for i in idx
+    )
+    return {"file": str(p), "total_pages": total, "text": text[:8000]}
+
+
+# ── Coding via headless CLI (Engineer-only) ───────────────────────────────────
+
+def code_task(prompt: str, cwd: str = ".", agent: Optional[str] = None,
+              timeout_seconds: int = 900) -> Dict[str, Any]:
+    """Hand a coding subtask to a headless coding agent inside the project folder.
+
+    Uses the same validated pipeline as judge-dispatch: path must stay under ~,
+    output is captured and returned for review.
+    """
+    from dispatcher import resolve_workspace, _load_business_settings, _cli_for
+
+    resolved = resolve_workspace(cwd)
+    chosen = agent or _load_business_settings().get("dispatch_agent_default", "claude")
+    argv = _cli_for(chosen)
+    if argv is None:
+        raise RuntimeError(f"'{chosen}' CLI not found on PATH")
+
+    import subprocess
+    proc = subprocess.run(
+        [*argv, prompt], cwd=resolved, capture_output=True, text=True,
+        timeout=max(30, min(timeout_seconds, 3600)),
+    )
+    return {
+        "agent": chosen,
+        "cwd": resolved,
+        "exit_code": proc.returncode,
+        "output": (proc.stdout or "")[-4000:],
+        "error": (proc.stderr or "")[-1000:] if proc.returncode else "",
+    }
+
+
 # ── Registry ──────────────────────────────────────────────────────────────────
 
 ToolFunc = Callable[..., Dict[str, Any]]
@@ -169,6 +261,52 @@ TOOLS: Dict[str, Dict[str, Any]] = {
         "roles": {"Researcher", "PM", "CTO"},
         "func": web_search,
     },
+    "read_project_docs": {
+        "description": (
+            "Read documentation (README, *.md, *.txt, configs) inside a project "
+            "folder — for non-coders to understand the codebase."
+        ),
+        "args": {
+            "path": {"type": "string", "required": False, "default": ".",
+                      "desc": "Project folder under ~"},
+            "glob": {"type": "string", "required": False,
+                      "default": "**/*.md", "desc": "Glob of files to read"},
+            "max_chars": {"type": "integer", "required": False, "default": 6000},
+        },
+        # everyone may read; coders rarely need it but no reason to block
+        "roles": {"CTO", "PM", "Judge", "Researcher", "Analyst", "Engineer"},
+        "func": read_project_docs,
+    },
+    "read_pdf": {
+        "description": "Extract text from a PDF anywhere under ~ (books, papers).",
+        "args": {
+            "path": {"type": "string", "required": True,
+                      "desc": "Path to the .pdf file"},
+            "pages": {"type": "string", "required": False, "default": "",
+                       "desc": "e.g. '5' or '10-20'; default first 8 pages"},
+        },
+        "roles": {"Researcher", "PM", "Judge", "Analyst", "CTO"},
+        "func": read_pdf,
+    },
+    "code_task": {
+        "description": (
+            "Run a coding subtask through a headless coding agent "
+            "(claude/opencode) inside a project folder. Engineers only."
+        ),
+        "args": {
+            "prompt": {"type": "string", "required": True,
+                        "desc": "Self-contained instruction for the coding agent"},
+            "cwd": {"type": "string", "required": False, "default": ".",
+                     "desc": "Project folder under ~"},
+            "agent": {"type": "string", "required": False, "default": None,
+                       "desc": "'claude' | 'opencode' (default from settings)"},
+            "timeout_seconds": {"type": "integer", "required": False,
+                                 "default": 900},
+        },
+        # ONLY engineers write code. Everyone else reads docs / dispatches via judge.
+        "roles": {"Engineer"},
+        "func": code_task,
+    },
 }
 
 
@@ -191,14 +329,17 @@ def list_tools(role: Optional[str] = None) -> Dict[str, Any]:
     return out
 
 
-def execute(tool_name: str, args: Dict[str, Any], role: Optional[str]) -> Dict[str, Any]:
+def execute(tool_name: str, args: Dict[str, Any], role: Optional[str],
+            allowed: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Execute with role gates PLUS per-person grants from their persona file."""
     spec = TOOLS.get(tool_name)
     if spec is None:
         raise ToolError(f"unknown tool '{tool_name}'. Available: {sorted(TOOLS)}")
-    if role and role not in spec["roles"]:
+    grants = set(allowed or [])
+    if role and role not in spec["roles"] and tool_name not in grants:
         raise ToolError(
-            f"role '{role}' is not permitted to use '{tool_name}' "
-            f"(allowed: {sorted(spec['roles'])})"
+            f"'{role}' may not use '{tool_name}' "
+            f"(role-allowed: {sorted(spec['roles'])}; persona-granted: {sorted(grants)})"
         )
 
     # Auditor-lite: validate required args before execution

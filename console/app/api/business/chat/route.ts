@@ -11,6 +11,18 @@ import {
   type BusinessRole,
 } from "@/lib/business";
 
+/** Human instruction for what each role is allowed to DO — injected into prompts. */
+const ROLE_DUTIES: Record<string, string> = {
+  Engineer:
+    "Your job: turn decisions into code. Use the `code_task` tool to drive claude/opencode inside the project folder. Never hand-code in the debate — dispatch, then report results.",
+  Researcher:
+    "Your job: gather knowledge. Use `download_books` (web → PDFs → knowledge base), `study` (query the KB), `read_pdf`, and `read_project_docs`. Cite sources.",
+  CTO: "Your job: technical verdicts. You may use any analysis tool (`study`, `web_search`, `read_project_docs`, `read_pdf`) but you do NOT write code yourself — you specify, Engineers implement.",
+  PM: "Your job: scope and sequence. Use `read_project_docs` and `study` to understand state; break work into subtasks for others. You do not code.",
+  Judge: "Your job: rule on arguments using evidence. Prefer `study` and `read_project_docs`; stay impartial; deliver structured verdicts.",
+  Analyst: "Your job: quantify claims with data from `study`/`read_project_docs`. No coding.",
+};
+
 type Body = {
   topic?: string;
   history?: Array<{ speaker: string; text: string }>;
@@ -102,6 +114,10 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt =
       composeSystemPrompt(role, character, peers) +
+      (ROLE_DUTIES[role as string]
+        ? `\n\nYour duty in this session: ${ROLE_DUTIES[role as string]}` +
+          `\nTools you may ask the operator to run for you: ${character.tools?.length ? character.tools.join(", ") : "your role's defaults"}.`
+        : "") +
       (project
         ? `\n\nThe team's current project is "${project.name}", rooted at ${project.folder}. Keep discussion relevant to this codebase/folder.`
         : "") +

@@ -16,7 +16,7 @@
  * directory (anywhere under ~) that dispatched subtasks operate within.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve as resolvePath, sep } from "node:path";
 
@@ -35,13 +35,6 @@ const CUSTOM_CHARS_PATH = join(CONFIG_DIR, "custom_characters.json");
 const SETTINGS_PATH = join(CONFIG_DIR, "settings.json");
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-export type Character = {
-  id: string;
-  name: string;
-  image?: string;
-  system_prompt?: string;
-};
 
 export type RoleConfig = {
   members: string[];        // character ids — multiple allowed
@@ -102,6 +95,17 @@ function ensureConfigDir() {
 
 // ── Characters ────────────────────────────────────────────────────────────────
 
+export type Character = {
+  id: string;
+  name: string;
+  image?: string;
+  system_prompt?: string;
+  /** Explicit tool grants from a persona file (merged with role defaults). */
+  tools?: string[];
+};
+
+const PERSONAS_DIR = join(CONFIG_DIR, "personas");
+
 function readJsonArray(path: string): Character[] {
   if (!existsSync(path)) return [];
   try {
@@ -112,11 +116,72 @@ function readJsonArray(path: string): Character[] {
   }
 }
 
+/**
+ * Persona files: one markdown file per person at
+ *   config/business/personas/<id>.md
+ *
+ *   ---
+ *   name: Ada the Architect
+ *   tools: [study, web_search, read_project_docs, read_pdf]
+ *   ---
+ *   You are Ada …persona body…
+ *
+ * Files are merged over the JSON roster (same id → file wins). This is how you
+ * give one specific person their own prompt + their own toolset.
+ */
+function listPersonaFiles(): Character[] {
+  if (!existsSync(PERSONAS_DIR)) return [];
+  let matter: ((s: string) => { data: Record<string, unknown>; content: string }) | null = null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    matter = require("gray-matter");
+  } catch {
+    /* fall back to naive parse below */
+  }
+  const out: Character[] = [];
+  for (const f of readdirSync(PERSONAS_DIR)) {
+    if (!f.endsWith(".md")) continue;
+    try {
+      const raw = readFileSync(join(PERSONAS_DIR, f), "utf8");
+      const id = f.replace(/\.md$/, "");
+      let name = id;
+      let tools: string[] = [];
+      let body = raw;
+      if (matter) {
+        const parsed = matter(raw);
+        name = String(parsed.data.name ?? id);
+        tools = Array.isArray(parsed.data.tools)
+          ? (parsed.data.tools as string[]).map(String)
+          : typeof parsed.data.tools === "string"
+            ? (parsed.data.tools as string).split(",").map((s) => s.trim()).filter(Boolean)
+            : [];
+        body = parsed.content;
+      } else {
+        const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+        if (m) {
+          const nm = m[1].match(/^name:\s*(.+)$/m);
+          if (nm) name = nm[1].trim();
+          const tl = m[1].match(/^tools:\s*\[(.*)\]/m);
+          if (tl) tools = tl[1].split(",").map((s) => s.trim().replace(/['"]/g, "")).filter(Boolean);
+          body = m[2];
+        }
+      }
+      out.push({ id, name, system_prompt: body.trim(), tools });
+    } catch {
+      /* skip broken file */
+    }
+  }
+  return out;
+}
+
 export function listCharacters(): Character[] {
   const base = readJsonArray(CHARACTERS_PATH);
   const custom = readJsonArray(CUSTOM_CHARS_PATH);
-  const seen = new Set(base.map((c) => c.id));
-  return [...base, ...custom.filter((c) => !seen.has(c.id))];
+  const personas = listPersonaFiles();
+  const merged = new Map<string, Character>();
+  for (const c of [...base, ...custom]) merged.set(c.id, c);
+  for (const p of personas) merged.set(p.id, { ...merged.get(p.id), ...p });
+  return [...merged.values()];
 }
 
 export function getCharacter(id: string): Character | null {

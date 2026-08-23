@@ -34,6 +34,7 @@ class ExecuteRequest(BaseModel):
     tool: str
     args: Dict[str, Any] = {}
     role: Optional[str] = None
+    allowed: list = []   # extra per-person tool grants from persona file
 
 
 @app.get("/health")
@@ -49,7 +50,7 @@ async def tools(role: Optional[str] = None):
 @app.post("/execute")
 async def run_tool(req: ExecuteRequest):
     try:
-        result = await asyncio.to_thread(execute, req.tool, req.args, req.role)
+        result = await asyncio.to_thread(execute, req.tool, req.args, req.role, req.allowed)
         log_event("tool", tool=req.tool, role=req.role, ok=True)
         return {"ok": True, "tool": req.tool, "role": req.role, "result": result}
     except ToolError as e:
