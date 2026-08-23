@@ -17,6 +17,7 @@ import shutil
 import time
 import pickle
 import ctypes
+import hashlib
 import struct
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -36,6 +37,13 @@ except ImportError:
     print("⚠️ RAG dependencies not available")
 
 try:
+    from rank_bm25 import BM25Okapi
+    BM25_AVAILABLE = True
+except ImportError:
+    BM25_AVAILABLE = False
+    print("⚠️ rank_bm25 not installed — hybrid search disabled. Run: pip install rank-bm25")
+
+try:
     import docx2txt
     DOCX_AVAILABLE = True
 except ImportError:
@@ -51,9 +59,20 @@ DOC_DIR   = Path(BASE_DIR) / "doc"
 CODE_DIR  = Path(BASE_DIR) / "code"
 FAISS_DIR = Path(BASE_DIR) / "storage" / "faiss_db"
 
-DOC_DIR.mkdir(exist_ok=True)
-CODE_DIR.mkdir(exist_ok=True)
-FAISS_DIR.mkdir(exist_ok=True)
+DOC_DIR.mkdir(parents=True, exist_ok=True)
+CODE_DIR.mkdir(parents=True, exist_ok=True)
+FAISS_DIR.mkdir(parents=True, exist_ok=True)
+
+BM25_PATH = FAISS_DIR / "bm25.pkl"
+
+# Reciprocal Rank Fusion constant (standard k=60)
+RRF_K = 60
+
+
+def _tokenize(text: str) -> List[str]:
+    """Simple lowercase alphanumeric tokenizer for BM25."""
+    import re
+    return re.findall(r"[a-z0-9]+", text.lower())
 
 DOC_EXTENSIONS  = {".pdf", ".docx", ".txt", ".md"}
 CODE_EXTENSIONS = {".py", ".c", ".cpp", ".h", ".md"}
@@ -124,6 +143,10 @@ class KnowledgeBase:
         self.manifest: Dict[str, Any] = {"indexed": [], "failed": []}
         self._lc_vectorstore = None  # LangChain FAISS wrapper (used only during indexing)
         self._embeddings = None
+        # Hybrid (BM25) state
+        self._bm25 = None            # BM25Okapi instance
+        self._bm25_corpus: List[Dict[str, Any]] = []   # [{"tokens", "content", "meta"}]
+        self._bm25_pending: List[Dict[str, Any]] = []  # chunks indexed this session
         self._boot()
 
     # ── Startup ───────────────────────────────────────────────────────────────
@@ -159,6 +182,7 @@ class KnowledgeBase:
             self._unload_embeddings()
             return
 
+        self._load_bm25()
         self._create_embeddings()
         self._index_new_files()
         self._unload_embeddings()
@@ -224,6 +248,7 @@ class KnowledgeBase:
         """Save the raw FAISS index + docstore to disk, then reload mmap."""
         if self._lc_vectorstore is None:
             return
+        self._save_bm25()
         self._lc_vectorstore.save_local(str(FAISS_DIR))
         # Sync raw pointers from LC wrapper before mmap reload
         self._raw_index = self._lc_vectorstore.index
@@ -254,6 +279,91 @@ class KnowledgeBase:
             )
         else:
             self._lc_vectorstore = None
+
+    # ── BM25 (hybrid sparse index) ────────────────────────────────────────────
+    def _load_bm25(self):
+        """Load persisted BM25 corpus; rebuild from docstore if missing."""
+        if not BM25_AVAILABLE:
+            return
+        if BM25_PATH.exists():
+            try:
+                with open(BM25_PATH, "rb") as f:
+                    payload = pickle.load(f)
+                self._bm25_corpus = payload["corpus"]
+                self._rebuild_bm25_index()
+                print(f"✅ BM25 loaded: {len(self._bm25_corpus)} chunks")
+                return
+            except Exception as e:
+                print(f"⚠️ BM25 load failed ({e}) — rebuilding")
+        self._rebuild_bm25_from_docstore()
+
+    def _rebuild_bm25_from_docstore(self):
+        """Rebuild the BM25 corpus from every chunk currently in the docstore."""
+        if not BM25_AVAILABLE or self._docstore is None:
+            return
+        try:
+            self._bm25_corpus = []
+            for doc_id in set(self._id_map.values()) if self._id_map else []:
+                doc = self._docstore.search(doc_id)
+                if doc is None:
+                    continue
+                meta = doc.metadata
+                self._bm25_corpus.append({
+                    "tokens":  _tokenize(doc.page_content),
+                    "content": doc.page_content,
+                    "meta": {
+                        "source":      meta.get("source_file") or meta.get("source", "Unknown"),
+                        "source_type": meta.get("source_type", "doc"),
+                        "language":    meta.get("language", "text"),
+                        "page":        meta.get("page", 0),
+                    },
+                })
+            self._rebuild_bm25_index()
+            self._save_bm25()
+            print(f"✅ BM25 rebuilt from docstore: {len(self._bm25_corpus)} chunks")
+        except Exception as e:
+            print(f"⚠️ BM25 rebuild failed: {e}")
+
+    def _rebuild_bm25_index(self):
+        if not BM25_AVAILABLE:
+            return
+        if self._bm25_corpus:
+            self._bm25 = BM25Okapi([c["tokens"] for c in self._bm25_corpus])
+        else:
+            self._bm25 = None
+
+    def _save_bm25(self):
+        """Merge pending chunks into the corpus, persist, and re-index."""
+        if not BM25_AVAILABLE:
+            return
+        if self._bm25_pending:
+            self._bm25_corpus.extend(self._bm25_pending)
+            self._bm25_pending = []
+            self._rebuild_bm25_index()
+        try:
+            with open(BM25_PATH, "wb") as f:
+                pickle.dump({"corpus": self._bm25_corpus}, f, protocol=pickle.HIGHEST_PROTOCOL)
+        except Exception as e:
+            print(f"⚠️ BM25 save failed: {e}")
+
+    def _bm25_search(self, query: str, k: int,
+                     source_type: str = None) -> List[Dict[str, Any]]:
+        if self._bm25 is None:
+            return []
+        tokens = _tokenize(query)
+        if not tokens:
+            return []
+        scores = self._bm25.get_scores(tokens)
+        ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
+        results = []
+        for idx in ranked[: k * 3]:
+            entry = self._bm25_corpus[idx]
+            if source_type and entry["meta"].get("source_type") != source_type:
+                continue
+            results.append({"content": entry["content"], **entry["meta"]})
+            if len(results) >= k:
+                break
+        return results
 
     # ── Loaders ───────────────────────────────────────────────────────────────
     def _load_file(self, path: Path) -> List[Document]:
@@ -347,6 +457,20 @@ class KnowledgeBase:
                 except Exception as e:
                     print(f"  [!] Partial embed error for {name}: {e}")
 
+            if BM25_AVAILABLE:
+                for c in valid:
+                    meta = c.metadata
+                    self._bm25_pending.append({
+                        "tokens":  _tokenize(c.page_content),
+                        "content": c.page_content,
+                        "meta": {
+                            "source":      meta.get("source_file") or meta.get("source", "Unknown"),
+                            "source_type": meta.get("source_type", "doc"),
+                            "language":    meta.get("language", "text"),
+                            "page":        meta.get("page", 0),
+                        },
+                    })
+
             self.manifest["indexed"].append(name)
             src = path.parent.name
             print(f"  ✓ [{src}] {name}: {len(valid)} chunks")
@@ -363,8 +487,8 @@ class KnowledgeBase:
             _compact()
 
     # ── Public API ────────────────────────────────────────────────────────────
-    def search(self, query: str, k: int = 10,
-               source_type: str = None) -> List[Dict[str, Any]]:
+    def _dense_search(self, query: str, k: int,
+                      source_type: str = None) -> List[Dict[str, Any]]:
         if self._raw_index is None:
             return []
         try:
@@ -399,8 +523,38 @@ class KnowledgeBase:
                     break
             return results
         except Exception as e:
-            print(f"⚠️ Search error: {e}")
+            print(f"⚠️ Dense search error: {e}")
             return []
+
+    def _hybrid_search(self, query: str, k: int,
+                       source_type: str = None) -> List[Dict[str, Any]]:
+        """Fuse dense (FAISS) + sparse (BM25) rankings via Reciprocal Rank Fusion."""
+        dense = self._dense_search(query, k, source_type)
+        sparse = self._bm25_search(query, k, source_type) if BM25_AVAILABLE else []
+
+        if not sparse:
+            return dense
+
+        def key(r: Dict[str, Any]) -> str:
+            return hashlib.md5(r["content"].encode("utf-8")).hexdigest()
+
+        fused: Dict[str, Dict[str, Any]] = {}
+        scores: Dict[str, float] = {}
+        for ranked in (dense, sparse):
+            for rank, r in enumerate(ranked):
+                kk = key(r)
+                fused.setdefault(kk, r)
+                scores[kk] = scores.get(kk, 0.0) + 1.0 / (RRF_K + rank + 1)
+
+        ordered = sorted(fused.items(), key=lambda kv: scores[kv[0]], reverse=True)
+        return [r for _, r in ordered[:k]]
+
+    def search(self, query: str, k: int = 10,
+               source_type: str = None,
+               mode: str = "hybrid") -> List[Dict[str, Any]]:
+        if mode == "dense":
+            return self._dense_search(query, k, source_type)
+        return self._hybrid_search(query, k, source_type)
 
     def get_context(self, query: str, k: int = 10,
                     source_type: str = None) -> str:
@@ -430,6 +584,11 @@ class KnowledgeBase:
         if name in self.manifest["indexed"]:
             self.manifest["indexed"].remove(name)
         self.manifest["failed"] = [e for e in self.manifest["failed"] if e["file"] != name]
+
+        # Purge stale BM25 chunks for this file so re-indexing doesn't duplicate
+        self._bm25_corpus = [c for c in self._bm25_corpus if c["meta"]["source"] != name]
+        self._bm25_pending = [c for c in self._bm25_pending if c["meta"]["source"] != name]
+        self._rebuild_bm25_index()
 
         self._create_embeddings()
         self._ensure_lc_store()
@@ -476,14 +635,17 @@ class SearchRequest(BaseModel):
     query:       str
     k:           int = 10
     source_type: str = None  # "doc" | "code" | None = search everything
+    mode:        str = "hybrid"  # "hybrid" (BM25+embeddings RRF) | "dense"
 
 
 # ── Search ────────────────────────────────────────────────────────────────────
 
 @app.post("/search")
 async def search(req: SearchRequest):
-    results = await asyncio.to_thread(kb.search, req.query, min(req.k, 20), req.source_type)
-    return {"results": results, "count": len(results)}
+    results = await asyncio.to_thread(
+        kb.search, req.query, min(req.k, 20), req.source_type, req.mode
+    )
+    return {"results": results, "count": len(results), "mode": req.mode}
 
 
 @app.post("/context")
@@ -548,6 +710,8 @@ async def health():
         "port":     5080,
         "total":    len(kb.manifest["indexed"]),
         "ready":    kb._raw_index is not None,
+        "hybrid":   BM25_AVAILABLE and kb._bm25 is not None,
+        "bm25_chunks": len(kb._bm25_corpus),
         "doc_dir":  str(DOC_DIR),
         "code_dir": str(CODE_DIR),
     }
