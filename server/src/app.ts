@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
@@ -13,8 +14,10 @@ import { analyticsRouter } from './routes/analytics.js';
 import { healthRouter } from './routes/health.js';
 import { settingsRouter } from './routes/settings.js';
 import { premiumRouter } from './routes/premium.js';
-import { authRouter } from './routes/auth.js';
-import { requireAuth } from './middleware/requireAuth.js';
+import { playgroundRouter } from './routes/playground.js';
+import { rateLimitRouter } from './routes/rateLimits.js';
+import { debateRouter } from './routes/debate.js';
+import { businessRouter } from './routes/business.js';
 import { createProxyRateLimiter } from './middleware/rateLimit.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -56,20 +59,26 @@ export function createApp() {
   // mid-conversation with an opaque 413. (#200)
   app.use(express.json({ limit: '10mb' }));
 
-  // Dashboard auth (#35): /api/auth/{status,setup,login} bootstrap without a
-  // session; everything else under /api/* requires a logged-in dashboard user.
-  // The /v1 proxy keeps its own unified-API-key auth and is NOT gated here.
-  app.use('/api/auth', authRouter);
+  // Dashboard auth removed — running locally behind localhost-only binding.
+  // The /v1 proxy keeps its own unified-API-key auth for app clients.
+  // All /api/* admin routes are now open (localhost-bound server = no external access).
 
-  // API routes — all admin endpoints sit behind requireAuth.
-  app.use('/api/keys', requireAuth, keysRouter);
-  app.use('/api/models', requireAuth, modelsRouter);
-  app.use('/api/fallback', requireAuth, fallbackRouter);
-  app.use('/api/embeddings', requireAuth, embeddingsRouter);
-  app.use('/api/analytics', requireAuth, analyticsRouter);
-  app.use('/api/health', requireAuth, healthRouter);
-  app.use('/api/settings', requireAuth, settingsRouter);
-  app.use('/api/premium', requireAuth, premiumRouter);
+  // Playground history — persisted as JSON on disk
+  app.use('/api/playground', playgroundRouter);
+
+  // Rate limit tracking — real-time per-model usage vs limits
+  app.use('/api/rate-limits', rateLimitRouter);
+
+  // API routes — open, no login required.
+  app.use('/api/keys', keysRouter);
+  app.use('/api/models', modelsRouter);
+  app.use('/api/fallback', fallbackRouter);
+  app.use('/api/embeddings', embeddingsRouter);
+  app.use('/api/analytics', analyticsRouter);
+  app.use('/api/health', healthRouter);
+  app.use('/api/settings', settingsRouter);
+  app.use('/api/premium', premiumRouter);
+
 
   // OpenAI-compatible proxy. Per-IP rate limiting (#35 item #6) runs first so
   // it throttles unauthenticated brute-force / flood attempts before any
@@ -87,7 +96,55 @@ export function createApp() {
   // Error handler (for API routes)
   app.use(errorHandler);
 
-  // Serve client static files (after API error handler). CLIENT_DIST lets
+  // Debate Simulator (merged from AI_Debate)
+  app.use('/debate/api', debateRouter);
+  app.use('/debate/images', express.static(path.resolve(__dirname, '../../data/images')));
+  app.use('/debate/exports', express.static(path.resolve(__dirname, '../../data/exports')));
+  // Serve character images at both /debate/images/ and /images/ for template compatibility
+  app.use('/images', express.static(path.resolve(__dirname, '../../data/images')));
+  
+  // API route aliases for backward compatibility
+  app.use('/api', debateRouter);
+
+  // Business module — role assignments + hybrid RAG meeting chat
+  app.use('/business/api', businessRouter);
+  app.use('/api/business', businessRouter);
+  app.use('/business/library-files', express.static(path.resolve(__dirname, '../../data/library/files')));
+  
+  app.get('/knowledge', (_req, res) => {
+    const templatePath = path.resolve(__dirname, '../../docs/knowledge.html');
+    if (fs.existsSync(templatePath)) res.sendFile(templatePath);
+    else res.status(404).send('Knowledge page not found');
+  });
+  
+  app.get('/personal', (_req, res) => {
+    const templatePath = path.resolve(__dirname, '../../docs/personal.html');
+    if (fs.existsSync(templatePath)) {
+      res.sendFile(templatePath);
+    } else {
+      res.status(404).send('Personal chat not found');
+    }
+  });
+  
+  app.get('/debate', (_req, res) => {
+    const templatePath = path.resolve(__dirname, '../../docs/debate.html');
+    if (fs.existsSync(templatePath)) {
+      res.sendFile(templatePath);
+    } else {
+      res.status(404).send('Debate module not found');
+    }
+  });
+
+  app.get('/business', (_req, res) => {
+    const templatePath = path.resolve(__dirname, '../../docs/business.html');
+    if (fs.existsSync(templatePath)) {
+      res.sendFile(templatePath);
+    } else {
+      res.status(404).send('Business module not found');
+    }
+  });
+
+    // Serve client static files (after API error handler). CLIENT_DIST lets
   // embedders relocate the built dashboard (e.g. the desktop app ships it in
   // extraResources, where the __dirname-relative path can't reach).
   const clientDist = process.env.CLIENT_DIST

@@ -8,11 +8,9 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuSeparator,
+
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { AuthGate } from '@/components/auth-gate'
-import { logout } from '@/lib/api'
 import KeysPage from '@/pages/KeysPage'
 import PlaygroundPage from '@/pages/PlaygroundPage'
 import FallbackPage from '@/pages/FallbackPage'
@@ -25,6 +23,9 @@ const queryClient = new QueryClient()
 const navItems = [
   { to: '/models', label: 'Models' },
   { to: '/playground', label: 'Playground' },
+  { to: '/debate', label: 'Debate', external: true },
+  { to: '/personal', label: 'Personal', external: true },
+  { to: '/knowledge', label: 'Knowledge', external: true },
   { to: '/keys', label: 'Keys' },
   { to: '/analytics', label: 'Analytics' },
   { to: '/premium', label: 'Premium' },
@@ -39,7 +40,20 @@ function getPreferredDarkMode() {
   return stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)
 }
 
-function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
+function NavItem({ to, children, external = false }: { to: string; children: React.ReactNode; external?: boolean }) {
+  if (external) {
+    return (
+      <a
+        href={to}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="relative text-sm px-1 py-4 transition-colors text-muted-foreground hover:text-foreground"
+      >
+        {children}
+        <span className="ml-1 text-[10px]">↗</span>
+      </a>
+    )
+  }
   return (
     <NavLink
       to={to}
@@ -135,7 +149,7 @@ function Navbar() {
           style={isDesktopApp ? ({ WebkitAppRegion: 'no-drag' } as React.CSSProperties) : undefined}
         >
           {navItems.map((item) => (
-            <NavItem key={item.to} to={item.to}>
+            <NavItem key={item.to} to={item.to} external={item.external}>
               {item.label}
             </NavItem>
           ))}
@@ -145,11 +159,6 @@ function Navbar() {
           style={isDesktopApp ? ({ WebkitAppRegion: 'no-drag' } as React.CSSProperties) : undefined}
         >
           <DarkModeToggle dark={dark} onToggle={toggle} />
-          {!isDesktopApp && (
-            <Button variant="ghost" size="sm" onClick={() => logout()}>
-              Sign out
-            </Button>
-          )}
         </div>
         <div className="ml-auto md:hidden">
           <DropdownMenu>
@@ -171,16 +180,6 @@ function Navbar() {
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem onClick={toggle} className="justify-between">
-                  <span>Theme</span>
-                  {dark ? <Sun /> : <Moon />}
-                </DropdownMenuItem>
-                {!isDesktopApp && (
-                  <DropdownMenuItem onClick={() => logout()}>Sign out</DropdownMenuItem>
-                )}
-              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -193,7 +192,6 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <AuthGate>
           <div className={`min-h-screen ${isDesktopApp ? 'desktop-backdrop' : 'bg-background'}`}>
             <Navbar />
             <main className="max-w-6xl mx-auto px-6 py-8">
@@ -212,7 +210,6 @@ function App() {
               </Routes>
             </main>
           </div>
-        </AuthGate>
       </BrowserRouter>
     </QueryClientProvider>
   )
