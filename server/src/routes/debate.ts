@@ -157,6 +157,40 @@ debateRouter.get('/sessions', (_req: Request, res: Response) => {
   res.json(sorted);
 });
 
+const safeSessionId = (id: string): string | null =>
+  /^[A-Za-z0-9_-]+$/.test(id) ? id : null;
+
+// GET /debate/api/sessions/:id — full session (history panel click)
+debateRouter.get('/sessions/:id', (req: Request, res: Response) => {
+  const id = safeSessionId(String(req.params.id));
+  if (!id) return res.status(400).json({ error: 'Invalid session id' });
+  const filePath = path.join(SESSIONS_DIR, `${id}.json`);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Session not found' });
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    res.json({
+      session_id: data.session_id ?? id,
+      topic: data.topic ?? '',
+      characters: data.participants ?? [],
+      mode: data.mode ?? 'random',
+      updated_at: data.updated_at,
+      history: data.history ?? [],
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: `Corrupt session file: ${e.message}` });
+  }
+});
+
+// DELETE /debate/api/sessions/:id — remove from history panel
+debateRouter.delete('/sessions/:id', (req: Request, res: Response) => {
+  const id = safeSessionId(String(req.params.id));
+  if (!id) return res.status(400).json({ error: 'Invalid session id' });
+  const filePath = path.join(SESSIONS_DIR, `${id}.json`);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Session not found' });
+  fs.unlinkSync(filePath);
+  res.json({ status: 'success', deleted: id });
+});
+
 // POST /debate/api/export
 debateRouter.post('/export', (req: Request, res: Response) => {
   const body = req.body as { topic: string; characters: string[]; history: any[] };
