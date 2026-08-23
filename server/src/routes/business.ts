@@ -15,6 +15,7 @@ import {
   buildRagContext, getDocument, LIBRARY_DIR,
 } from '../services/rag.js';
 import { sendOk, sendError } from '../lib/envelope.js';
+import { toolsForRole, buildToolBlock, parseToolCall } from '../lib/business-tools.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -150,6 +151,7 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
     mode?: string;
     forced_speaker?: string;
     use_rag?: boolean;
+    max_tokens?: number;
   };
   const { topic, participants, history, user_name, mode, forced_speaker, use_rag } = body;
   if (!participants || participants.length === 0) {
@@ -171,11 +173,19 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
     ? `\n\n[Business Role: ${role.name} — ${role.title}]\n${role.prompt}`
     : '\n\n[Business Role: Unassigned — speak from your character perspective as a team member.]';
 
+  // Job-based tool gating (marin pattern): only roles whose job needs tools
+  // get a tool block; everyone else must answer from knowledge alone.
+  const toolBlock = buildToolBlock(role?.id);
+
   // RAG context from the hybrid knowledge library (retrieved for this topic).
   const ragContext = use_rag ? buildRagContext(`${topic} ${history?.slice(-3).map(h => h.text).join(' ')}`, 4) : '';
 
-  const base = `You are in a business strategy meeting about "${topic}". Participants: ${participants.join(', ')} and ${user_name || 'User'}. You are speaking as ${speaker}.\n\nCharacter identity: ${charPrompt}${roleBlock}\n\n` +
-    `Meeting rules: 1) Stay in character ALWAYS — keep your personality, tone and quirks. 2) Operate from within your assigned business role (if any). 3) Do NOT prefix with your name. 4) Respond conversationally (1-4 sentences). 5) Be decisive, give your point of view, and address others by name when relevant.${ragContext}`;
+  const base = `You are in a business strategy meeting about "${topic}". Participants: ${participants.join(', ')} and ${user_name || 'User'}. You are speaking as ${speaker}.\n\nCharacter identity: ${charPrompt}${roleBlock}${toolBlock}\n\n` +
+    `Meeting rules: 1) Stay in character ALWAYS — keep your personality, tone and quirks. 2) Operate from within your assigned business role (if any). 3) Do NOT prefix with your name. 4) Respond naturally — short when conversational, long and detailed when the task needs depth (e.g. code or analysis). 5) Be decisive, give your point of view, and address others by name when relevant.${ragContext}`;
+
+  // Token budget is generous and client-tunable: coding/analysis answers need
+  // room. Never clamp characters to a few hundred tokens.
+  const maxTokens = Math.min(8192, Math.max(256, Number(body.max_tokens) || 2048));
 
   const messages: Array<{ role: string; content: string }> = [{ role: 'system', content: base }];
   for (const msg of (history || []).slice(-8)) {
@@ -184,12 +194,16 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
   }
 
   const apiKey = process.env.FREELLMAPI_KEY || '';
-  try {
+  const callLLM = async (msgs: Array<{ role: string; content: string }>) => {
     const proxyRes = await fetch('http://localhost:3001/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-      body: JSON.stringify({ model: 'auto', messages, max_tokens: 300 }),
+      body: JSON.stringify({ model: 'auto', messages: msgs, max_tokens: maxTokens }),
     });
+    return proxyRes;
+  };
+  try {
+    const proxyRes = await callLLM(messages);
     if (!proxyRes.ok) {
       const errText = await proxyRes.text();
       return sendError(res, proxyRes.status, `LLM error: ${errText.slice(0, 200)}`, {
@@ -236,7 +250,36 @@ businessRouter.post('/chat', async (req: Request, res: Response) => {
       }
     }
 
-    return sendOk(res, { speaker, role: role ? role.name : null, text: reply, rag: { applied: ragContext.length > 0 } });
+    // One tool-use round (marin pattern): if the model requested a tool its
+    // role is actually granted, execute it server-side and let the model
+    // continue over the observation. Ungranted/unknown tools are refused.
+    const call = parseToolCall(reply);
+    let toolUsed: string | null = null;
+    if (call) {
+      const granted = toolsForRole(role?.id).find((t) => t.name === call.tool);
+      if (!granted) {
+        messages.push({ role: 'assistant', content: reply });
+        messages.push({ role: 'user', content: `[System] Tool "${call.tool}" is not available to your role. Answer directly without it.` });
+      } else {
+        let observation: string;
+        try {
+          observation = JSON.stringify(await granted.run(call.args));
+          toolUsed = call.tool;
+        } catch (e: any) {
+          observation = `Tool error: ${e?.message || e}`;
+        }
+        messages.push({ role: 'assistant', content: reply });
+        messages.push({ role: 'user', content: `[Tool result for ${call.tool}]\n${observation.slice(0, 4000)}\n\nContinue speaking in character, using this result where useful.` });
+      }
+      const second = await callLLM(messages);
+      if (second.ok) {
+        const d2: any = await second.json();
+        const r2: string = d2.choices?.[0]?.message?.content || '';
+        if (r2.trim()) reply = r2.trim();
+      }
+    }
+
+    return sendOk(res, { speaker, role: role ? role.name : null, text: reply, rag: { applied: ragContext.length > 0 }, tool_used: toolUsed });
   } catch (e: any) {
     return sendError(res, 502, `Connection failed: ${e.message}`, {
       hint: 'The LLM proxy at localhost:3001 is unreachable — start the server (npm run dev) and retry.',
