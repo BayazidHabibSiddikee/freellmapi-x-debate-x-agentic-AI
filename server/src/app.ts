@@ -17,6 +17,7 @@ import { premiumRouter } from './routes/premium.js';
 import { playgroundRouter } from './routes/playground.js';
 import { rateLimitRouter } from './routes/rateLimits.js';
 import { debateRouter } from './routes/debate.js';
+import { businessRouter } from './routes/business.js';
 import { createProxyRateLimiter } from './middleware/rateLimit.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -104,6 +105,11 @@ export function createApp() {
   
   // API route aliases for backward compatibility
   app.use('/api', debateRouter);
+
+  // Business module — role assignments + hybrid RAG meeting chat
+  app.use('/business/api', businessRouter);
+  app.use('/api/business', businessRouter);
+  app.use('/business/library-files', express.static(path.resolve(__dirname, '../../data/library/files')));
   
   app.get('/knowledge', (_req, res) => {
     const templatePath = path.resolve(__dirname, '../../docs/knowledge.html');
@@ -126,6 +132,15 @@ export function createApp() {
       res.sendFile(templatePath);
     } else {
       res.status(404).send('Debate module not found');
+    }
+  });
+
+  app.get('/business', (_req, res) => {
+    const templatePath = path.resolve(__dirname, '../../docs/business.html');
+    if (fs.existsSync(templatePath)) {
+      res.sendFile(templatePath);
+    } else {
+      res.status(404).send('Business module not found');
     }
   });
 

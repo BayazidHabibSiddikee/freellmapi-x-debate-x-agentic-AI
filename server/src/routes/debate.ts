@@ -1,7 +1,11 @@
 import { Router, type Request, type Response } from 'express';
+import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  indexDocument, listDocuments, deleteDocument, hybridSearch, buildRagContext,
+} from '../services/rag.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,7 +83,7 @@ debateRouter.post('/chat', async (req: Request, res: Response) => {
       const errText = await proxyRes.text();
       return res.status(proxyRes.status).json({ error: `LLM error: ${errText.slice(0, 200)}` });
     }
-    const data = await proxyRes.json();
+    const data: any = await proxyRes.json();
     const msg = data.choices?.[0]?.message || {};
     let reply = msg.content || '[Error: empty response]';
     
@@ -109,6 +113,21 @@ debateRouter.post('/chat', async (req: Request, res: Response) => {
       }
     }
     
+    // GPT-OSS / reasoning models leak chain-of-thought into content. Detect the
+    // tell-tale meta-reasoning and pull out the actual spoken answer.
+    if (/we only have system|user content is not provided|the assistant must|must (abide|obey|follow).*polic|disallowed content|we must not|we have to obey/i.test(reply)) {
+      const quoted: string[] = reply.match(/["“]([^"”]{15,}?)["”]/g) || [];
+      const splitOnInstructions = reply.split(/\b(?:Thus|Therefore|Respond|Response|So),?:/).map((s: string) => s.trim()).filter((s: string) => s);
+      const sayers = [...quoted, ...reply.split(/(?<=[.!?])\s+/), ...splitOnInstructions]
+        .filter((s: string) => s && !/we only have system|user content is not provided|must (abide|obey|follow)|disallowed content|we must not|we have to obey|essay|analysis/i.test(s) && s.length > 15);
+      if (sayers.length) {
+        const quotedAnswer = quoted.find(s => !/polic|disallowed|must not/i.test(s) && s.length > 15);
+        const cleanest = sayers.reduce((a, b) => (b.length > a.length ? b : a));
+        const cleaned = String(quotedAnswer || cleanest).replace(/^["“]|["”]$/g, '').trim();
+        if (cleaned) reply = cleaned;
+      }
+    }
+
     res.json({ speaker: nextCharName, text: reply });
   } catch (e: any) {
     res.status(502).json({ error: `Connection failed: ${e.message}` });
@@ -198,4 +217,62 @@ debateRouter.post('/upload_character', async (req: Request, res: Response) => {
 // GET /debate/api/health
 debateRouter.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'operational', characters_loaded: loadCharacters().length, sessions_count: fs.readdirSync(SESSIONS_DIR).filter((f: string) => f.endsWith('.json')).length });
+});
+
+// -------------------------------------------------------------------------
+// Knowledge hub — RAG library (hybrid BM25 + embeddings). These power the
+// /knowledge page and are shared with the Business module.
+// -------------------------------------------------------------------------
+
+// POST /debate/api/upload_knowledge — multipart file upload (md/txt/docx/pdf)
+debateRouter.post('/upload_knowledge', express.raw({ type: ['multipart/form-data'], limit: '30mb' }), (req: Request, res: Response) => {
+  const contentType = req.headers['content-type'] || '';
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;\s]+))/);
+  if (!boundaryMatch) return res.status(400).json({ error: { message: 'Invalid content type' } });
+  const boundary = boundaryMatch[1] || boundaryMatch[2];
+  const rawBody = req.body as Buffer;
+
+  let filename = '';
+  let fileData: Buffer | null = null;
+  const parts = rawBody.toString('binary').split(`--${boundary}`).map(p => Buffer.from(p, 'binary'));
+  for (const part of parts) {
+    const headerEndIdx = part.indexOf('\r\n\r\n');
+    if (headerEndIdx === -1) continue;
+    const headers = part.subarray(0, headerEndIdx).toString('latin1');
+    if (!headers.includes('name="file"')) continue;
+    const fnameMatch = headers.match(/filename="([^"]+)"/);
+    if (!fnameMatch) continue;
+    filename = fnameMatch[1];
+    let body = part.subarray(headerEndIdx + 4);
+    while (body.length && (body[body.length - 1] === 13 || body[body.length - 1] === 10)) body = body.subarray(0, body.length - 1);
+    fileData = body.length ? body : null;
+    break;
+  }
+  if (!fileData || !filename) return res.status(400).json({ error: { message: 'No file provided' } });
+  const allowed = /\.(md|txt|docx|pdf|html|json|markdown|csv)$/i;
+  if (!allowed.test(filename)) return res.status(400).json({ error: { message: 'Unsupported file type' } });
+
+  const doc = indexDocument(filename, fileData);
+  res.json({ status: 'success', message: `Indexed "${doc.name}"`, id: doc.id, ...(doc.note ? { note: doc.note } : {}) });
+});
+
+// GET /debate/api/rag_report — indexed library listing
+debateRouter.get('/rag_report', (_req: Request, res: Response) => {
+  const docs = listDocuments();
+  res.json({ indexed: docs.map((d) => d.name), documents: docs, total: docs.length });
+});
+
+// POST /debate/api/knowledge_search — hybrid BM25 + embeddings retrieval
+debateRouter.post('/knowledge_search', (req: Request, res: Response) => {
+  const query = (req.body?.query || '').trim();
+  if (!query) return res.status(400).json({ error: { message: 'Missing query' } });
+  const results = hybridSearch(query, 8);
+  res.json({ count: results.length, results });
+});
+
+// DELETE /debate/api/rag/:id — remove an indexed document
+debateRouter.delete('/rag/:id', (req: Request, res: Response) => {
+  const ok = deleteDocument(String(req.params.id));
+  if (!ok) return res.status(404).json({ error: { message: 'Document not found' } });
+  res.json({ success: true });
 });
