@@ -18,3 +18,5 @@ dist
 npm-debug.log*
 repo-assets
 free-ai-apis.pdf
+agent-workspace
+console/node_modules

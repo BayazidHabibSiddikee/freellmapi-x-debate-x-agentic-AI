@@ -192,6 +192,11 @@ def code_task(prompt: str, cwd: str = ".", agent: Optional[str] = None,
 
     Uses the same validated pipeline as judge-dispatch: path must stay under ~,
     output is captured and returned for review.
+
+    Sandbox mode: when AGENT_SANDBOX=docker, the task runs inside the
+    `sword-agent` container (see docker-compose.agent.yml) instead of on the
+    host — the agent works as root in its own machine with no permission
+    prompts; only ./agent-workspace is visible from the host.
     """
     from dispatcher import resolve_workspace, _load_business_settings, _cli_for
 
@@ -202,9 +207,28 @@ def code_task(prompt: str, cwd: str = ".", agent: Optional[str] = None,
         raise RuntimeError(f"'{chosen}' CLI not found on PATH")
 
     import subprocess
+    import shlex
+
+    sandbox_mode = os.environ.get("AGENT_SANDBOX", "").strip().lower() == "docker"
+    effective_timeout = max(30, min(timeout_seconds, 3600))
+    if sandbox_mode:
+        inner_cmd = shlex.join([*argv, prompt])
+        proc = subprocess.run(
+            ["docker", "exec", "-w", "/workspace", "sword-agent",
+             "bash", "-lc", inner_cmd],
+            capture_output=True, text=True, timeout=effective_timeout,
+        )
+        return {
+            "agent": chosen,
+            "cwd": "/workspace (docker sandbox: sword-agent)",
+            "exit_code": proc.returncode,
+            "output": (proc.stdout or "")[-4000:],
+            "error": (proc.stderr or "")[-1000:] if proc.returncode else "",
+        }
+
     proc = subprocess.run(
         [*argv, prompt], cwd=resolved, capture_output=True, text=True,
-        timeout=max(30, min(timeout_seconds, 3600)),
+        timeout=effective_timeout,
     )
     return {
         "agent": chosen,
@@ -334,7 +358,7 @@ def _test_commands(framework: str, extra_args: List[str]) -> List[List[str]]:
     if framework == "mocha":
         return [["npx", "mocha", *extra_args]]
     if framework == "make":
-        return [["make", "test", *(f"EXTRA={a}" for a in extra_args)]]
+        return [["make", "test"] + extra_args]
     if framework == "npm-test":
         return [["npm", "test", "--", *extra_args]] if extra_args else [["npm", "test"]]
     return []

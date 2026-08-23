@@ -1,0 +1,49 @@
+# SwordOffice industry stack: Postgres(+pgvector) + unrestricted agent sandbox.
+#
+#   docker compose -f docker-compose.agent.yml up -d
+#
+# - postgres       : one database (`swordoffice`), schema `office`, rooms as
+#                    rows — 46 personas never means 46 databases (services/agent/db.py)
+# - agent-sandbox  : the team's private workspace machine. Agents run as root
+#                    inside it and can work without permission prompts; the only
+#                    host path exposed is ./agent-workspace.
+name: swordoffice
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: swordoffice-pg
+    environment:
+      POSTGRES_USER: sword
+      POSTGRES_PASSWORD: swordoffice
+      POSTGRES_DB: swordoffice
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sword -d swordoffice"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  agent-sandbox:
+    build:
+      context: ./docker
+      dockerfile: agent-sandbox.Dockerfile
+    image: swordoffice-agent-sandbox
+    container_name: sword-agent
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SWORDOFFICE_PG: postgresql://sword:swordoffice@postgres:5432/swordoffice
+    volumes:
+      # The agent's free space on the host. Everything it does lands here;
+      # nothing else on the host is visible to it.
+      - ./agent-workspace:/workspace
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -2,6 +2,43 @@
 
 Docker Compose is the recommended way to run FreeLLMAPI for personal use. The container serves the Express API and the built React dashboard from one process on port 3001, with SQLite persisted in a named volume.
 
+## SwordOffice industry stack (`docker-compose.agent.yml`)
+
+The AI team's infrastructure: a PostgreSQL(+pgvector) database and a private
+sandbox machine where team agents work freely.
+
+```bash
+docker compose -f docker-compose.agent.yml up -d --build
+```
+
+**postgres** (`swordoffice-pg`) — one database `swordoffice` (user `sword`),
+schema `office`. Rooms are rows, not databases: 46 personas = 46 rows in
+`office.rooms`, all memories in `office.persona_memory`. `services/agent/db.py`
+creates the tables on first use; set `SWORDOFFICE_PG` to point at it
+(default `postgresql://sword:swordoffice@localhost:5432/swordoffice`).
+Data persists in the `pgdata` volume.
+
+**agent-sandbox** (`sword-agent`) — the team's private workstation. Inside it,
+agents run as **root with no permission prompts**: node 20, python3, git, and
+headless coding CLIs are preinstalled. Isolation comes from the container
+boundary — the only host path visible is `./agent-workspace` (mounted at
+`/workspace`).
+
+Enable sandbox dispatch for `code_task`:
+
+```bash
+AGENT_SANDBOX=docker   # e.g. in .env / config/business/settings env
+```
+
+Quick checks:
+
+```bash
+docker exec sword-agent node -v                 # toolchain present
+echo hi > agent-workspace/hello.txt             # host sees agent's work
+docker exec sword-agent psql "$SWORDOFFICE_PG" -c '\dt office.*'
+```
+
+
 ## Prerequisites
 
 - Docker
