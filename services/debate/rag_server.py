@@ -265,20 +265,16 @@ class KnowledgeBase:
             except Exception as e:
                 print(f"⚠️ mmap reload failed: {e}")
 
-    # ── Build index using LangChain wrapper (easiest path for chunk→embed) ───
+    # ── Load a writable LC wrapper from disk (never wrap the mmap'd index) ────
     def _ensure_lc_store(self):
         if self._lc_vectorstore is not None:
             return
-        if self._raw_index is not None and self._docstore is not None and self._id_map is not None:
-            from langchain_community.vectorstores import FAISS as LC_FAISS
-            self._lc_vectorstore = LC_FAISS(
-                self._raw_index,
-                self._docstore,
-                self._id_map,
-                self._embeddings,
+        from langchain_community.vectorstores import FAISS as LC_FAISS
+        if (FAISS_DIR / "index.faiss").exists() and self._embeddings is not None:
+            self._lc_vectorstore = LC_FAISS.load_local(
+                str(FAISS_DIR), self._embeddings,
+                allow_dangerous_deserialization=True,
             )
-        else:
-            self._lc_vectorstore = None
 
     # ── BM25 (hybrid sparse index) ────────────────────────────────────────────
     def _load_bm25(self):

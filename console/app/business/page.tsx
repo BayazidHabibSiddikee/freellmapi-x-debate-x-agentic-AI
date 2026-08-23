@@ -66,7 +66,46 @@ export default function BusinessPage() {
   const [history, setHistory] = useState<Turn[]>([]);
   const [busyRole, setBusyRole] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toolName, setToolName] = useState("");
+  const [toolsForRole, setToolsForRole] = useState<Record<string, unknown>>({});
+  const [toolBusy, setToolBusy] = useState(false);
+  const [toolResult, setToolResult] = useState<string | null>(null);
+  const [toolError, setToolError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const activeRoles0 = roster?.role_list.filter((r) => roster.roles[r]) ?? [];
+
+  // Load tools for the first active role
+  useEffect(() => {
+    if (activeRoles0.length === 0) return;
+    fetch(`/api/business/tools?role=${encodeURIComponent(activeRoles0[0])}&t=${tokenQS()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setToolsForRole(d?.tools ?? {}))
+      .catch(() => setToolsForRole({}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roster]);
+
+  async function runTool() {
+    if (!toolName) return;
+    setToolBusy(true);
+    setToolError(null);
+    setToolResult(null);
+    try {
+      const role = activeRoles0[0];
+      const res = await fetch(`/api/business/tool-run?t=${tokenQS()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: toolName, args: {}, role }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setToolResult(JSON.stringify(data.result, null, 2).slice(0, 4000));
+    } catch (e) {
+      setToolError(e instanceof Error ? e.message : "tool failed");
+    } finally {
+      setToolBusy(false);
+    }
+  }
 
   const load = useCallback(() => {
     fetch(`/api/business/roster?t=${tokenQS()}`)
@@ -181,6 +220,50 @@ export default function BusinessPage() {
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      {/* Team tools */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Team tools</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activeRoles.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Assign a role above to unlock its tools (Researcher can download books and
+              study them; every role can query the knowledge base).
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select
+                aria-label="Tool"
+                value={toolName}
+                onChange={(e) => setToolName(e.target.value)}
+                className="rounded border bg-transparent px-2 py-1.5 text-sm"
+              >
+                <option value="">— pick tool —</option>
+                {Object.entries(toolsForRole).map(([name, spec]) => (
+                  <option key={name} value={name}>
+                    {name} — {(spec as { description?: string }).description?.slice(0, 60)}
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                disabled={!toolName || toolBusy}
+                onClick={runTool}
+              >
+                {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Run"}
+              </Button>
+            </div>
+          )}
+          {toolResult && (
+            <pre className="mt-3 max-h-56 overflow-auto rounded bg-muted p-2 text-xs">
+              {toolResult}
+            </pre>
+          )}
+          {toolError && <p className="mt-2 text-xs text-destructive">{toolError}</p>}
         </CardContent>
       </Card>
 
