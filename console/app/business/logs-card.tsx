@@ -59,7 +59,7 @@ export function LogsCard({ tokenQS }: { tokenQS: () => string }) {
               {f}
             </Button>
           ))}
-          <Button variant="outline" size="sm" className="ml-auto h-7" onClick={load}>
+          <Button variant="outline" size="sm" className="h-7" onClick={load}>
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Refresh"}
           </Button>
         </div>

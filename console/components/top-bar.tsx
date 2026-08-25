@@ -45,7 +45,7 @@ export function TopBar() {
       : "http://localhost:3001";
 
   return (
-    <div className="hidden md:flex h-12 items-center justify-between border-b border-[hsl(var(--border-default))] px-6 dense">
+    <div className="hidden md:flex h-12 items-center gap-5 border-b border-[hsl(var(--border-default))] px-6 dense">
       <div className="flex items-center gap-1.5 text-xs">
         <Link href="/" className="text-[hsl(var(--fg-dim))] hover:text-[hsl(var(--fg-secondary))] transition-colors">
           SwordOffice
@@ -79,8 +79,10 @@ export function TopBar() {
             <ExternalLink className="h-2.5 w-2.5" />
           </a>
         ))}
-        <span>{new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
       </div>
+      <span className="ml-auto font-mono text-[10px] text-[hsl(var(--fg-dim))]">
+        {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+      </span>
     </div>
   );
 }
