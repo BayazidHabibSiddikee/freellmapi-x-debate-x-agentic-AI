@@ -6,11 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
       try {
-        const theme = localStorage.getItem('theme')
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        if (theme === 'dark' || (!theme && prefersDark)) {
-          document.documentElement.classList.add('dark')
-        }
+        document.documentElement.classList.add('dark')
       } catch {
         // Keep the initial render working if localStorage is unavailable.
       }

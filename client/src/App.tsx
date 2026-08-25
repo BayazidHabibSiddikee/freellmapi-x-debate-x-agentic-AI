@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Menu, Moon, Sun } from 'lucide-react'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Menu } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,20 +25,11 @@ const navItems = [
   { to: '/debate', label: 'Debate', external: true },
   { to: '/personal', label: 'Personal', external: true },
   { to: '/knowledge', label: 'Knowledge', external: true },
-  { to: typeof window !== 'undefined' && `${window.location.protocol}//${window.location.hostname}:18443/business`, label: '🏢 Business (Console)', external: true },
+  { to: typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:18443/business` : 'http://localhost:18443/business', label: '🏢 Business (Console)', external: true },
   { to: '/keys', label: 'Keys' },
   { to: '/analytics', label: 'Analytics' },
   { to: '/premium', label: 'Premium' },
 ]
-
-function getPreferredDarkMode() {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  const stored = localStorage.getItem('theme')
-  return stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)
-}
 
 function NavItem({ to, children, external = false }: { to: string; children: React.ReactNode; external?: boolean }) {
   if (external) {
@@ -71,36 +61,8 @@ function NavItem({ to, children, external = false }: { to: string; children: Rea
   )
 }
 
-function useDarkMode() {
-  const [dark, setDark] = useState(getPreferredDarkMode)
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark)
-  }, [dark])
-
-  function toggle() {
-    setDark((current) => {
-      const next = !current
-      localStorage.setItem('theme', next ? 'dark' : 'light')
-      return next
-    })
-  }
-
-  return { dark, toggle }
-}
-
-function DarkModeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={onToggle}
-      aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-    >
-      {dark ? <Sun /> : <Moon />}
-    </Button>
-  )
-}
+// Dark-only product: pin the class at module load — before the first paint.
+document.documentElement.classList.add('dark')
 
 function Brand() {
   return (
@@ -125,7 +87,6 @@ if (isDesktopApp) {
 }
 
 function Navbar() {
-  const { dark, toggle } = useDarkMode()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -158,9 +119,7 @@ function Navbar() {
         <div
           className="ml-auto hidden items-center gap-1 md:flex"
           style={isDesktopApp ? ({ WebkitAppRegion: 'no-drag' } as React.CSSProperties) : undefined}
-        >
-          <DarkModeToggle dark={dark} onToggle={toggle} />
-        </div>
+        />
         <div className="ml-auto md:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger
