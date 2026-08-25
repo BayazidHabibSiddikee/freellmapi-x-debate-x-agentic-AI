@@ -102,7 +102,7 @@ export function createApp() {
   app.use('/debate/exports', express.static(path.resolve(__dirname, '../../data/exports')));
 
   // Shared design-language stylesheet for all template surfaces
-  app.get('/theme.css', (_req: Request, res: Response) => {
+  app.get('/theme.css', (_req, res) => {
     res.type('text/css').sendFile(path.resolve(__dirname, '../../docs/theme.css'));
   });
   // Serve character images at both /debate/images/ and /images/ for template compatibility
