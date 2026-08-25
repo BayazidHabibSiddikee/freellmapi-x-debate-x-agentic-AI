@@ -64,5 +64,15 @@ export function validateToken(req: NextRequest): boolean {
   const cookie = req.cookies.get("agentic_os_token")?.value;
   if (cookie && cookie === expected) return true;
 
+  // Localhost-bound single-user product: a request that carries NO
+  // credentials at all and originates from loopback is trusted.
+  // Anything presenting a wrong token is still rejected.
+  if (!auth && !t && !cookie) {
+    const host = req.headers.get("host") ?? "";
+    if (/^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/.test(host)) {
+      return true;
+    }
+  }
+
   return false;
 }
