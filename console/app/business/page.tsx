@@ -5,13 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, Loader2, Send, RefreshCw, Gavel, Rocket } from "lucide-react";
+import { Briefcase, Loader2, Send, RefreshCw, Gavel, Rocket, BookPlus, ListChecks } from "lucide-react";
 import { Avatar, tokenQS, type Character } from "./avatar";
 import { RolesCard, type RoleConfig } from "./roles-card";
 import { CharactersBrowser } from "./characters-browser";
+import { TeamsCard, type Team } from "./teams-card";
 import { ProjectsCard, type Project } from "./projects-card";
 import { LogsCard } from "./logs-card";
 import { SettingsCard, type Settings } from "./settings-card";
+import { DispatchQueueCard } from "./dispatch-queue-card";
 
 type Turn = { speaker: string; role?: string; text: string; used_rag?: boolean };
 type Roster = {
@@ -20,6 +22,7 @@ type Roster = {
   role_list: string[];
   settings: Settings;
   projects?: Project[];
+  teams?: Team[];
 };
 
 export default function BusinessPage() {
@@ -39,6 +42,8 @@ export default function BusinessPage() {
   } | null>(null);
   const [judgeBusy, setJudgeBusy] = useState(false);
   const [dispatchResult, setDispatchResult] = useState<string | null>(null);
+  const [ingestMsg, setIngestMsg] = useState<string | null>(null);
+  const [ingesting, setIngesting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
@@ -141,13 +146,28 @@ export default function BusinessPage() {
       });
       const data = await res.json();
       if (!res.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${res.status}`);
+      const rev = data.review_summary;
+      const reviewLine = rev && rev.total > 0
+        ? `\n\n[Auto-review] ${rev.total} passed, ${rev.rejects} rejected${rev.needs_attention ? ' ⚠ attention needed' : ''}`
+        : '';
       setDispatchResult(
-        JSON.stringify(data.summary) +
+        JSON.stringify(data.summary) + reviewLine +
           "\n\n" +
           (data.results ?? [])
             .map(
-              (r: { id?: string; status?: string; output?: string }) =>
-                `${r.id}: ${r.status}${r.output ? `\n${String(r.output).slice(0, 400)}` : ""}`,
+              (r: { id?: string; status?: string; output?: string; reviews?: Array<Record<string, unknown>> }) =>
+                `${r.id}: ${r.status}${r.output ? `\n${String(r.output).slice(0, 400)}` : ""}` +
+                (r.reviews?.length
+                  ? `\nReviews:\n${r.reviews
+                      .map((rv) => {
+                        const v = rv as Record<string, unknown>;
+                        const who = (v.reviewer as string) ?? v.kind;
+                        const verdict = (v.verdict as string) ?? v.raw;
+                        const fb = (v.feedback as string) ?? "";
+                        return `  [${who ?? "?"}] ${verdict ?? ""}${fb ? ` — ${fb}` : ""}`;
+                      })
+                      .join("\n")}`
+                  : ""),
             )
             .join("\n\n"),
       );
@@ -162,6 +182,63 @@ export default function BusinessPage() {
       setError(e instanceof Error ? e.message : "dispatch failed");
     } finally {
       setJudgeBusy(false);
+    }
+  }
+async function runQueueSubtasks() {
+    if (!spec) return;
+    setJudgeBusy(true);
+    setError(null);
+    try {
+      const activeProject = roster?.projects?.find(
+        (p) => p.id === roster?.settings?.active_project,
+      );
+      const res = await fetch(`/api/business/jobs?t=${tokenQS()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spec,
+          project: activeProject
+            ? { id: activeProject.id, name: activeProject.name, folder: activeProject.folder }
+            : {},
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setDispatchResult(
+        `Queued job ${data.job?.id} — ${data.job?.subtasks ?? 0} subtask(s) running in parallel.\n` +
+          `Track progress in the Dispatch Queue below.`,
+      );
+      setHistory((h) => [
+        ...h,
+        {
+          speaker: "Dispatcher",
+          text: `Queued ${data.job?.subtasks ?? 0} subtask(s) as job ${data.job?.id} (parallel, ${roster?.projects?.length ?? 0} project(s)).`,
+        },
+      ]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "enqueue failed");
+    } finally {
+      setJudgeBusy(false);
+    }
+  }
+
+  async function ingestTranscript() {
+    if (ingesting || history.length === 0) return;
+    setIngesting(true);
+    setIngestMsg(null);
+    try {
+      const res = await fetch(`/api/business/ingest-transcript?t=${tokenQS()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, history }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setIngestMsg(data.message ?? "Ingested");
+    } catch (e) {
+      setIngestMsg(e instanceof Error ? e.message : "ingest failed");
+    } finally {
+      setIngesting(false);
     }
   }
 
@@ -197,6 +274,12 @@ export default function BusinessPage() {
         </div>
       </header>
 
+      {/* Two-column layout: config cards scroll in the left gutter, debate panel anchors the right side. */}
+      <div className="columns-1 lg:columns-[340px_1fr] gap-6">
+
+        {/* ── Left column: team configuration (scrolls) ── */}
+        <div className="flex flex-col gap-4">
+
       <RolesCard
         tokenQS={tokenQS}
         characters={roster.characters}
@@ -219,6 +302,12 @@ export default function BusinessPage() {
         }}
       />
 
+      <TeamsCard
+        tokenQS={tokenQS}
+        teams={roster.teams ?? []}
+        onChanged={load}
+      />
+
       <ProjectsCard
         tokenQS={tokenQS}
         characters={roster.characters}
@@ -226,6 +315,8 @@ export default function BusinessPage() {
         activeId={roster.settings?.active_project ?? null}
         onChanged={load}
       />
+
+      <DispatchQueueCard tokenQS={tokenQS} />
 
       <SettingsCard tokenQS={tokenQS} settings={roster.settings} onSaved={load} />
 
@@ -359,6 +450,16 @@ export default function BusinessPage() {
               )}
               Judge
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={history.length === 0 || ingesting}
+              onClick={ingestTranscript}
+              title="Store this debate in the knowledge base so future debates can cite it"
+            >
+              {ingesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookPlus className="h-4 w-4" />}
+              Ingest into KB
+            </Button>
             {spec && (
               <Button size="sm" disabled={judgeBusy} onClick={runSubtasks}>
                 {judgeBusy ? (
@@ -369,11 +470,30 @@ export default function BusinessPage() {
                 Dispatch {spec.subtasks?.length ?? 0} subtask(s)
               </Button>
             )}
+            {spec && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={judgeBusy}
+                onClick={runQueueSubtasks}
+                title="Queue subtasks on the parallel worker pool (multi-project)"
+              >
+                {judgeBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ListChecks className="h-4 w-4" />
+                )}
+                Dispatch (queue)
+              </Button>
+            )}
           </div>
           {spec && (
             <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-2 text-xs">
               {JSON.stringify(spec, null, 2).slice(0, 2500)}
             </pre>
+          )}
+          {ingestMsg && (
+            <p className="mt-2 text-xs text-muted-foreground">{ingestMsg}</p>
           )}
           {dispatchResult && (
             <pre className="mt-2 max-h-56 overflow-auto rounded border p-2 text-xs">
@@ -382,6 +502,198 @@ export default function BusinessPage() {
           )}
         </CardContent>
       </Card>
+
+      <LogsCard tokenQS={tokenQS} />
+
+        </div>
+        {/* Right column: debate + dispatch panel — pinned to viewport */}
+        <div className="lg:sticky lg:top-6 lg:self-start">
+
+      {/* Team tools */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Team tools</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activeRoles.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Assign a role above to unlock its tools (Researcher can download books and
+              study them; every role can query the knowledge base).
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select
+                aria-label="Tool"
+                value={toolName}
+                onChange={(e) => setToolName(e.target.value)}
+                className="rounded border bg-transparent px-2 py-1.5 text-sm"
+              >
+                <option value="">— pick tool —</option>
+                {Object.entries(toolsForRole).map(([name, spec]) => (
+                  <option key={name} value={name}>
+                    {name} — {(spec as { description?: string }).description?.slice(0, 60)}
+                  </option>
+                ))}
+              </select>
+              <Button size="sm" disabled={!toolName || toolBusy} onClick={runTool}>
+                {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Run"}
+              </Button>
+            </div>
+          )}
+          {toolResult && (
+            <pre className="mt-3 max-h-56 overflow-auto rounded bg-muted p-2 text-xs">
+              {toolResult}
+            </pre>
+          )}
+          {toolError && <p className="mt-2 text-xs text-destructive">{toolError}</p>}
+        </CardContent>
+      </Card>
+
+      {/* Working session */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Working session</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Topic or goal — e.g. design the billing service for v2"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+            />
+            <Button onClick={() => speak()} disabled={!topic.trim() || Boolean(busyRole)}>
+              {busyRole === "__auto__" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Speak
+            </Button>
+          </div>
+          <p className="mt-1.5 flex flex-wrap items-center text-xs text-muted-foreground">
+            Or ask a specific role:
+            {activeRoles.map((r) => (
+              <Button
+                key={r}
+                variant="ghost"
+                size="sm"
+                className="ml-1 h-7 px-2 text-xs"
+                disabled={!topic.trim() || Boolean(busyRole)}
+                onClick={() => speak(r)}
+              >
+                {busyRole === r ? <Loader2 className="h-3 w-3 animate-spin" /> : r}
+              </Button>
+            ))}
+          </p>
+
+          {error && (
+            <p className="mt-3 rounded border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+              {error}
+            </p>
+          )}
+
+          <div className="mt-4 space-y-3">
+            {history.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Set the topic and press Speak. Assigned characters respond in role,
+                citing your knowledge base when it helps.
+              </p>
+            )}
+            {history.map((turn, i) => (
+              <div key={i} className="flex gap-3">
+                <Avatar name={turn.speaker} id={charByName[turn.speaker]?.id} />
+                <div className="min-w-0 flex-1 rounded-lg border p-3">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-sm font-medium">{turn.speaker}</span>
+                    {turn.role && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {turn.role}
+                      </Badge>
+                    )}
+                    {turn.used_rag && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        RAG
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm">{turn.text}</p>
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Judge → coding agents */}
+          <div className="mt-4 flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!topic.trim() || history.length === 0 || judgeBusy}
+              onClick={judgeAndDispatch}
+              title="Distill the debate into a task spec"
+            >
+              {judgeBusy && !spec ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Gavel className="h-4 w-4" />
+              )}
+              Judge
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={history.length === 0 || ingesting}
+              onClick={ingestTranscript}
+              title="Store this debate in the knowledge base so future debates can cite it"
+            >
+              {ingesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookPlus className="h-4 w-4" />}
+              Ingest into KB
+            </Button>
+            {spec && (
+              <Button size="sm" disabled={judgeBusy} onClick={runSubtasks}>
+                {judgeBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Rocket className="h-4 w-4" />
+                )}
+                Dispatch {spec.subtasks?.length ?? 0} subtask(s)
+              </Button>
+            )}
+            {spec && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={judgeBusy}
+                onClick={runQueueSubtasks}
+                title="Queue subtasks on the parallel worker pool (multi-project)"
+              >
+                {judgeBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ListChecks className="h-4 w-4" />
+                )}
+                Dispatch (queue)
+              </Button>
+            )}
+          </div>
+          {spec && (
+            <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-2 text-xs">
+              {JSON.stringify(spec, null, 2).slice(0, 2500)}
+            </pre>
+          )}
+          {ingestMsg && (
+            <p className="mt-2 text-xs text-muted-foreground">{ingestMsg}</p>
+          )}
+          {dispatchResult && (
+            <pre className="mt-2 max-h-56 overflow-auto rounded border p-2 text-xs">
+              {dispatchResult.slice(0, 3000)}
+            </pre>
+          )}
+        </CardContent>
+      </Card>
+
+        </div>
+      </div>
 
       <LogsCard tokenQS={tokenQS} />
     </div>
