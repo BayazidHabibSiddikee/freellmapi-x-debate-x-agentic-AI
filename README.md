@@ -57,6 +57,9 @@ A single workspace merging **five** previously separate projects:
 4. **Researcher flow**: download books/PDFs from the web → auto-ingest into the knowledge base → cited in later debates.
 5. **Judge** distills the transcript into a JSON task spec (goal, decisions, subtasks with agent + cwd). Role workspaces are passed as hints.
 6. **Dispatch** runs each subtask headlessly through `claude -p` / `opencode run`. Workspaces are validated to stay under `$HOME`. Results feed back into the session for review.
+7. **Industry marketplace**: personas publish hard-won lessons (`publish_insight`) to a shared cross-team pool; any role can search it (`cross_team_search`) before starting work that another team may have already solved or failed at.
+8. **Urgent alerts**: when an agent hits a blocker mid-debate it can page owners instantly via their configured Telegram bot (`urgent_alert` tool).
+9. **Teams**: multiple independent teams share the same deployment — each with its own roles, project workspace, and settings.
 
 ## Quick start
 
@@ -74,6 +77,8 @@ Then open **http://localhost:18443/business**.
 |------|-------|
 | Role members & workspaces | UI Roles card → `config/business/roles.json` |
 | Model, temperature, max tokens, history depth, RAG k, default dispatch agent, timeouts, file-write permission | UI Settings card → `config/business/settings.json` |
+| **Telegram bots** — per-user bot config (name, token from BotFather, owner email, CC gmails, allowed chat IDs) | UI Settings card → same `settings.json` |
+| **Multi-team** — separate team rosters & projects | UI Teams card → `config/business/teams.json` |
 | Custom characters | `config/business/custom_characters.json` (merged over the base roster) |
 | Logs viewer | UI Logs card (`activity.jsonl`, agent/rag/debate/console logs) |
 | Structured activity journal | `logs/activity.jsonl` — every tool run, judge call, dispatch |
@@ -85,6 +90,7 @@ Then open **http://localhost:18443/business**.
 - `FREELLM_API_BASE` (default `http://localhost:3001/v1`), `FREELLM_MODEL` (default `auto`)
 - `CLAUDE_FLAGS` — e.g. `--permission-mode acceptEdits` to let dispatched tasks write files
 - `DISPATCH_TIMEOUT` — seconds per subtask (default 900)
+- `CONSOLE_URL` / `CONSOLE_PUBLIC_URL` — where the Telegram bridge reaches the console (default `http://localhost:18443`)
 
 ---
 
