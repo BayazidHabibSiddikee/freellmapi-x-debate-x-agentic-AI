@@ -838,7 +838,7 @@
         }
 
         function getSelectedCharacters() {
-            const checkboxes = document.querySelectorAll('.char-card input[type="radio" name="selected_character"]:checked');
+            const checkboxes = document.querySelectorAll('.char-card input[type="radio"][name="selected_character"]:checked');
             return Array.from(checkboxes).map(cb => cb.value);
         }
 
@@ -849,8 +849,6 @@
         }
 
         // Auto-play Logic
-        
-        }
 
         async function generateTurn() {
             if (isGenerating) return;
