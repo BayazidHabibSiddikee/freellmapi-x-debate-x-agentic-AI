@@ -71,22 +71,22 @@
         .sidebar {
             width: 360px;
             background: var(--bg-surface);
-            border-right: 1px solid var(--border-light);
+            border-left: 1px solid var(--border-light);
             padding: 24px;
             display: flex;
             flex-direction: column;
             gap: 24px;
             z-index: 100;
-            box-shadow: 5px 0 30px rgba(0,0,0,0.5);
+            box-shadow: -5px 0 30px rgba(0,0,0,0.5);
             overflow-y: auto;
             position: absolute;
-            left: -360px;
+            right: -360px;
             height: 100%;
-            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
+
         .sidebar.open {
-            left: 0;
+            right: 0;
         }
 
         /* Overlay */
@@ -696,11 +696,11 @@
     <div class="chat-arena">
         <div class="chat-header">
             <div style="display: flex; align-items: center;">
-                <button class="hamburger" onclick="toggleSidebar()"><i class="ri-menu-line"></i></button>
                 <div class="chat-header-info">
                     <h2 id="headerTopic">The ethics of AI in creative arts</h2>
                     <p id="headerMeta">0 Turns • 0 Participants Active</p>
                 </div>
+                <button class="hamburger" onclick="toggleSidebar()" style="margin-left: auto; margin-right: 0;"><i class="ri-menu-line"></i></button>
             </div>
             <div id="statusBadge" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); background: var(--bg-surface); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-light);">
                 <i class="ri-checkbox-blank-circle-fill" style="font-size: 10px;"></i> Idle
