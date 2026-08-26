@@ -24,7 +24,7 @@ export function TeamsCard({
   async function call(method: string, body?: unknown, qs = "") {
     setBusy(true);
     try {
-      await fetch(`/api/business/teams${qs}&t=${tokenQS()}`, {
+      await fetch(`/api/business/teams${qs}`, {
         method,
         headers: body ? { "Content-Type": "application/json" } : undefined,
         body: body ? JSON.stringify(body) : undefined,

@@ -1,33 +1,48 @@
 {
   "Director": {
     "members": [
-      "[Obsession|¦|Thomas_Barrett]"
+      "[Obsession|¦|Thomas_Barrett]",
+      "OpenClaw_Agent",
+      "hermes"
     ],
     "workspace": null
   },
   "Marketing": {
     "members": [
-      "Makima_||_The_Control_Devil~"
+      "Makima_||_The_Control_Devil~",
+      "Elena_Vasquez",
+      "Your_Little_Sister_",
+      "marcus_reed",
+      "Makima"
     ],
     "workspace": null
   },
   "CTO": {
     "members": [
-      "Admiral_Statura"
+      "Admiral_Statura",
+      "Ghost_-_The_bug"
     ],
     "workspace": null
   },
   "PM": {
-    "members": [],
+    "members": [
+      "Kim_Hung",
+      "Marin"
+    ],
     "workspace": null
   },
   "Judge": {
-    "members": [],
+    "members": [
+      "[Obsession|¦|Thomas_Barrett]",
+      "Ghost_-_The_bug"
+    ],
     "workspace": null
   },
   "Researcher": {
     "members": [
-      "Ghost_-_The_bug"
+      "Ghost_-_The_bug",
+      "tom_becker",
+      "general_vector"
     ],
     "workspace": null
   },
@@ -39,23 +54,38 @@
     "workspace": "/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate"
   },
   "Analyst": {
-    "members": [],
+    "members": [
+      "dana_analyst"
+    ],
     "workspace": null
   },
   "Reviewer": {
-    "members": [],
+    "members": [
+      "ada_architect",
+      "june_inspector",
+      "sam_reviewer"
+    ],
     "workspace": null
   },
   "DevOps": {
-    "members": [],
+    "members": [
+      "Ghost_-_The_bug",
+      "Misato_(Your_Hot_Commander)",
+      "nova_vance",
+      "june_inspector"
+    ],
     "workspace": null
   },
   "Security": {
-    "members": [],
+    "members": [
+      "marcus_sentinel"
+    ],
     "workspace": null
   },
   "Writer": {
-    "members": [],
+    "members": [
+      "echo"
+    ],
     "workspace": null
   }
 }

@@ -1,0 +1,1 @@
+{"nodes": [], "edges": [{"source": "console_copilot", "target": "console_agents", "relation": "references", "type": "EXTRACTED", "confidence_score": 1.0, "source_file": "console/copilot-instructions.md"}], "hyperedges": []}

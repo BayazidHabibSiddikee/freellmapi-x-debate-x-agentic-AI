@@ -1,0 +1,1 @@
+{"nodes": [], "edges": [{"source": "skill_template", "target": "console_readme", "relation": "referenced_by", "type": "EXTRACTED", "confidence_score": 1.0, "source_file": "console/hermes/skills/README.md"}], "hyperedges": []}

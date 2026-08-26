@@ -1,0 +1,20 @@
+/home/sword/freellmapi-x-debate-x-agentic-AI/client/public/favicon.svg
+/home/sword/freellmapi-x-debate-x-agentic-AI/client/public/icons.svg
+/home/sword/freellmapi-x-debate-x-agentic-AI/client/src/assets/vite.svg
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Admiral_Statura.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Alibaba.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Elena_Vasquez.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Evok.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Hector_ Isekai.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Kim_Hung.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Little_Sister_Moon.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Makima.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Maya♥︎.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Misato.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Mona_Lanius.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/SLAVE_John.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Sarah.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Sebastian.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Shimelia.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Thomas_Barrett.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/data/images/Viktor_Weber.card.png

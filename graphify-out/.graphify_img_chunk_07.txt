@@ -1,0 +1,15 @@
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Thomas_Barrett.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Viktor_Weber.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/default_marin.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/images.jpeg
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/Screenshot From 2026-05-12 06-40-29.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/banner.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/chat.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/codeflow.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/map.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/profile.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/quiz.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/research_hub.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/vault_graph.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/static/uploads/vpa_architecture.svg
+/home/sword/freellmapi-x-debate-x-agentic-AI/tools/whatsapp_manual_screenshot.png

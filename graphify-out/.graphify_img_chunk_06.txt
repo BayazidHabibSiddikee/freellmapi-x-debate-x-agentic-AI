@@ -1,0 +1,20 @@
+/home/sword/freellmapi-x-debate-x-agentic-AI/repo-assets/analytics.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/repo-assets/desktop.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/repo-assets/fallback-chain.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/repo-assets/keys.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/repo-assets/playground.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Admiral_Statura.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Alibaba.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Elena_Vasquez.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Evok.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Hector_ Isekai.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Kim_Hung.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Little_Sister_Moon.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Makima.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Maya♥︎.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Misato.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Mona_Lanius.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/SLAVE_John.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Sarah.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Sebastian.card.png
+/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate/images/Shimelia.card.png

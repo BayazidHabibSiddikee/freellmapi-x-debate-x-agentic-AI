@@ -1,0 +1,607 @@
+{
+  "doc": {
+    "height": 11384,
+    "vh": 900,
+    "acts": [
+      "flow",
+      "pin",
+      "flow",
+      "flow",
+      "pan",
+      "pin"
+    ],
+    "world": null
+  },
+  "report": [
+    {
+      "i": 0,
+      "y": 0,
+      "pct": 0,
+      "settled": true,
+      "contrast": [
+        {
+          "t": "Don't send one AIto do ateam's job.",
+          "dir": "dark-on-light",
+          "worst": 14.67,
+          "mean": 14.91
+        },
+        {
+          "t": "Let a team of AI characters debate your ",
+          "dir": "dark-on-light",
+          "worst": 6.15,
+          "mean": 6.47
+        },
+        {
+          "t": "SwordOffice A local-first AI company on ",
+          "dir": "dark-on-light",
+          "worst": 6.26,
+          "mean": 6.45
+        }
+      ],
+      "cues": [
+        {
+          "t": "Don't send one AIto do ateam's job.",
+          "o": 1
+        },
+        {
+          "t": "Let a team of AI characters debate your goal, ",
+          "o": 1
+        },
+        {
+          "t": "SwordOffice A local-first AI company on your m",
+          "o": 1
+        }
+      ],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 1,
+      "y": 288,
+      "pct": 3,
+      "settled": true,
+      "contrast": [
+        {
+          "t": "Don't send one AIto do ateam's job.",
+          "dir": "dark-on-light",
+          "worst": 14.67,
+          "mean": 14.91
+        },
+        {
+          "t": "Let a team of AI characters debate your ",
+          "dir": "dark-on-light",
+          "worst": 6.21,
+          "mean": 6.46
+        }
+      ],
+      "cues": [
+        {
+          "t": "Don't send one AIto do ateam's job.",
+          "o": 1
+        },
+        {
+          "t": "Let a team of AI characters debate your goal, ",
+          "o": 0.99
+        },
+        {
+          "t": "SwordOffice A local-first AI company on your m",
+          "o": 0.65
+        }
+      ],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 2,
+      "y": 864,
+      "pct": 8,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 3,
+      "y": 940,
+      "pct": 9,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 4,
+      "y": 1573,
+      "pct": 15,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 5,
+      "y": 2207,
+      "pct": 21,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 6,
+      "y": 2840,
+      "pct": 27,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 7,
+      "y": 2911,
+      "pct": 28,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 8,
+      "y": 3403,
+      "pct": 32,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 9,
+      "y": 3544,
+      "pct": 34,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 10,
+      "y": 3894,
+      "pct": 37,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 11,
+      "y": 3988,
+      "pct": 38,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 12,
+      "y": 4386,
+      "pct": 42,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 13,
+      "y": 4432,
+      "pct": 42,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 14,
+      "y": 4876,
+      "pct": 47,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pan",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 15,
+      "y": 4972,
+      "pct": 47,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -25
+      ],
+      "wipes": [],
+      "act": "pan",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 16,
+      "y": 6067,
+      "pct": 58,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -430
+      ],
+      "wipes": [],
+      "act": "pan",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 17,
+      "y": 7161,
+      "pct": 68,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -834
+      ],
+      "wipes": [],
+      "act": "pan",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 18,
+      "y": 8256,
+      "pct": 79,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1239
+      ],
+      "wipes": [],
+      "act": "pan",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 19,
+      "y": 9249,
+      "pct": 88,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1264
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 20,
+      "y": 9652,
+      "pct": 92,
+      "settled": true,
+      "contrast": [
+        {
+          "t": "Chapter 06 · Start",
+          "dir": "light-on-dark",
+          "worst": 8.02,
+          "mean": 9.72
+        },
+        {
+          "t": "Your local-first AI company,running on y",
+          "dir": "light-on-dark",
+          "worst": 14.04,
+          "mean": 15.12
+        }
+      ],
+      "cues": [
+        {
+          "t": "Chapter 06 · Start",
+          "o": 1
+        },
+        {
+          "t": "Your local-first AI company,running on your ma",
+          "o": 1
+        },
+        {
+          "t": "Everything stays local. Keys stay encrypted. D",
+          "o": 0.52
+        }
+      ],
+      "clips": [],
+      "rails": [
+        -1264
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 21,
+      "y": 10056,
+      "pct": 96,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1264
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 22,
+      "y": 10459,
+      "pct": 100,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1264
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 23,
+      "y": 10484,
+      "pct": 100,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1264
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    }
+  ],
+  "consoleErrors": [],
+  "failed": []
+}

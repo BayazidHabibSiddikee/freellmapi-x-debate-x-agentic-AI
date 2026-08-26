@@ -48,7 +48,7 @@ export function ProjectsCard({
     setBusy(true);
     setMsg(null);
     try {
-      const res = await fetch(`/api/business/projects${qs}&t=${tokenQS()}`, {
+      const res = await fetch(`/api/business/projects${qs}`, {
         method,
         headers: body ? { "Content-Type": "application/json" } : undefined,
         body: body ? JSON.stringify(body) : undefined,
@@ -66,7 +66,7 @@ export function ProjectsCard({
   }
 
   async function setActive(id: string | null) {
-    await fetch(`/api/business/settings?t=${tokenQS()}`, {
+    await fetch(`/api/business/settings`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active_project: id }),

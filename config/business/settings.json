@@ -9,8 +9,9 @@
   "dispatch_timeout_seconds": 900,
   "allow_file_writes": false,
   "auto_review": true,
+  "active_project": "proj_app001",
   "dispatch_max_retries": 1,
   "team_review": true,
   "dispatch_max_parallel": 2,
-  "active_project": "proj_mt66qk7qeq0k"
+  "telegram_bots": []
 }

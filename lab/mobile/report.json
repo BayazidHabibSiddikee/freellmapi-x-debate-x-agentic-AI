@@ -1,0 +1,619 @@
+{
+  "doc": {
+    "height": 10848,
+    "vh": 844,
+    "acts": [
+      "flow",
+      "pin",
+      "flow",
+      "flow",
+      "pan",
+      "pin"
+    ],
+    "world": null
+  },
+  "report": [
+    {
+      "i": 0,
+      "y": 0,
+      "pct": 0,
+      "settled": true,
+      "contrast": [
+        {
+          "t": "Don't send one AIto do ateam's job.",
+          "dir": "dark-on-light",
+          "worst": 14.4,
+          "mean": 14.96
+        },
+        {
+          "t": "Let a team of AI characters debate your ",
+          "dir": "dark-on-light",
+          "worst": 6.03,
+          "mean": 6.47
+        },
+        {
+          "t": "SwordOffice A local-first AI company on ",
+          "dir": "dark-on-light",
+          "worst": 6.26,
+          "mean": 6.45
+        }
+      ],
+      "cues": [
+        {
+          "t": "Don't send one AIto do ateam's job.",
+          "o": 1
+        },
+        {
+          "t": "Let a team of AI characters debate your goal, ",
+          "o": 1
+        },
+        {
+          "t": "SwordOffice A local-first AI company on your m",
+          "o": 1
+        }
+      ],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 1,
+      "y": 270,
+      "pct": 3,
+      "settled": true,
+      "contrast": [
+        {
+          "t": "Don't send one AIto do ateam's job.",
+          "dir": "dark-on-light",
+          "worst": 13.74,
+          "mean": 15
+        },
+        {
+          "t": "Let a team of AI characters debate your ",
+          "dir": "dark-on-light",
+          "worst": 6.09,
+          "mean": 6.46
+        }
+      ],
+      "cues": [
+        {
+          "t": "Don't send one AIto do ateam's job.",
+          "o": 1
+        },
+        {
+          "t": "Let a team of AI characters debate your goal, ",
+          "o": 0.99
+        },
+        {
+          "t": "SwordOffice A local-first AI company on your m",
+          "o": 0.65
+        }
+      ],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 2,
+      "y": 810,
+      "pct": 8,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 3,
+      "y": 881,
+      "pct": 9,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 4,
+      "y": 1475,
+      "pct": 15,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 5,
+      "y": 2070,
+      "pct": 21,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 6,
+      "y": 2664,
+      "pct": 27,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 7,
+      "y": 2728,
+      "pct": 27,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 8,
+      "y": 3165,
+      "pct": 32,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 9,
+      "y": 3252,
+      "pct": 33,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 10,
+      "y": 3601,
+      "pct": 36,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 11,
+      "y": 3748,
+      "pct": 37,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 12,
+      "y": 4038,
+      "pct": 40,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 13,
+      "y": 4244,
+      "pct": 42,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 14,
+      "y": 4740,
+      "pct": 47,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        0
+      ],
+      "wipes": [],
+      "act": "flow",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 15,
+      "y": 4835,
+      "pct": 48,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -34
+      ],
+      "wipes": [],
+      "act": "pan",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 16,
+      "y": 5861,
+      "pct": 59,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -583
+      ],
+      "wipes": [],
+      "act": "pan",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 17,
+      "y": 6888,
+      "pct": 69,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1132
+      ],
+      "wipes": [],
+      "act": "pan",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 18,
+      "y": 7914,
+      "pct": 79,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1681
+      ],
+      "wipes": [],
+      "act": "pan",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 19,
+      "y": 8846,
+      "pct": 88,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1715
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 20,
+      "y": 9224,
+      "pct": 92,
+      "settled": true,
+      "contrast": [
+        {
+          "t": "Chapter 06 · Start",
+          "dir": "light-on-dark",
+          "worst": 8.55,
+          "mean": 9.74
+        },
+        {
+          "t": "Your local-first AI company,running on y",
+          "dir": "light-on-dark",
+          "worst": 14.04,
+          "mean": 15.15
+        }
+      ],
+      "cues": [
+        {
+          "t": "Chapter 06 · Start",
+          "o": 1
+        },
+        {
+          "t": "Your local-first AI company,running on your ma",
+          "o": 1
+        },
+        {
+          "t": "Everything stays local. Keys stay encrypted. D",
+          "o": 0.52
+        }
+      ],
+      "clips": [],
+      "rails": [
+        -1715
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 21,
+      "y": 9602,
+      "pct": 96,
+      "settled": true,
+      "contrast": [
+        {
+          "t": "Clone the repo → MIT licensed · Node 20+",
+          "dir": "light-on-dark",
+          "worst": 14.36,
+          "mean": 15.13
+        }
+      ],
+      "cues": [
+        {
+          "t": "Clone the repo → MIT licensed · Node 20+ · Pyt",
+          "o": 1
+        }
+      ],
+      "clips": [],
+      "rails": [
+        -1715
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 22,
+      "y": 9981,
+      "pct": 100,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1715
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    },
+    {
+      "i": 23,
+      "y": 10004,
+      "pct": 100,
+      "settled": true,
+      "contrast": [],
+      "cues": [],
+      "clips": [],
+      "rails": [
+        -1715
+      ],
+      "wipes": [],
+      "act": "pin",
+      "stages": [],
+      "segs": [],
+      "custom": [],
+      "customHold": false,
+      "seg": null,
+      "segp": null,
+      "bg": "#F0EBE0"
+    }
+  ],
+  "consoleErrors": [],
+  "failed": []
+}
