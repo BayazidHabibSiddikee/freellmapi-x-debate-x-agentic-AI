@@ -3,12 +3,21 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+
+const FIELDS = [
+  { key: "telegram_bot_token", label: "Telegram Bot Token", placeholder: "Enter bot token..." },
+  { key: "gmail_api_key", label: "Gmail API Key", placeholder: "Enter Gmail API key..." },
+  { key: "instagram_token", label: "Instagram Access Token", placeholder: "Enter Instagram token..." },
+  { key: "youtube_token", label: "YouTube API Key", placeholder: "Enter YouTube API key..." },
+  { key: "facebook_token", label: "Facebook Page Access Token", placeholder: "Enter Facebook token..." },
+  { key: "x_token", label: "X (Twitter) Bearer Token", placeholder: "Enter X bearer token..." },
+];
 
 export default function SettingsForm({ initialConfig }: { initialConfig: any }) {
-  const [keys, setKeys] = useState({
-    telegram_bot_token: initialConfig.telegram_bot_token || "",
-    gmail_api_key: initialConfig.gmail_api_key || "",
+  const [keys, setKeys] = useState(() => {
+    const init: Record<string, string> = {};
+    FIELDS.forEach((f) => (init[f.key] = initialConfig[f.key] || ""));
+    return init;
   });
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -21,7 +30,7 @@ export default function SettingsForm({ initialConfig }: { initialConfig: any }) 
         body: JSON.stringify({ key, value }),
       });
       if (!res.ok) throw new Error();
-    } catch (e) {
+    } catch {
       alert(`Failed to save ${key}`);
     } finally {
       setSaving(null);
@@ -30,43 +39,27 @@ export default function SettingsForm({ initialConfig }: { initialConfig: any }) 
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-2">
-        <label className="text-xs font-medium text-muted-foreground">Telegram Bot Token</label>
-        <div className="flex gap-2">
-          <Input
-            value={keys.telegram_bot_token}
-            onChange={(e) => setKeys({ ...keys, telegram_bot_token: e.target.value })}
-            placeholder="Enter bot token..."
-            className="font-mono text-xs"
-          />
-          <Button
-            size="sm"
-            onClick={() => save("telegram_bot_token", keys.telegram_bot_token)}
-            disabled={saving === "telegram_bot_token"}
-          >
-            {saving === "telegram_bot_token" ? "..." : "Save"}
-          </Button>
+      {FIELDS.map((f) => (
+        <div key={f.key} className="grid gap-2">
+          <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
+          <div className="flex gap-2">
+            <Input
+              type="password"
+              value={keys[f.key]}
+              onChange={(e) => setKeys({ ...keys, [f.key]: e.target.value })}
+              placeholder={f.placeholder}
+              className="font-mono text-xs"
+            />
+            <Button
+              size="sm"
+              onClick={() => save(f.key, keys[f.key])}
+              disabled={saving === f.key}
+            >
+              {saving === f.key ? "..." : "Save"}
+            </Button>
+          </div>
         </div>
-      </div>
-
-      <div className="grid gap-2">
-        <label className="text-xs font-medium text-muted-foreground">Gmail API Key</label>
-        <div className="flex gap-2">
-          <Input
-            value={keys.gmail_api_key}
-            onChange={(e) => setKeys({ ...keys, gmail_api_key: e.target.value })}
-            placeholder="Enter API key..."
-            className="font-mono text-xs"
-          />
-          <Button
-            size="sm"
-            onClick={() => save("gmail_api_key", keys.gmail_api_key)}
-            disabled={saving === "gmail_api_key"}
-          >
-            {saving === "gmail_api_key" ? "..." : "Save"}
-          </Button>
-        </div>
-      </div>
+      ))}
     </div>
   );
 }

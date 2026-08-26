@@ -25,6 +25,10 @@ export type Config = {
   install_id: string;
   telegram_bot_token?: string;
   gmail_api_key?: string;
+  instagram_token?: string;
+  youtube_token?: string;
+  facebook_token?: string;
+  x_token?: string;
 };
 
 const DEFAULTS: Omit<Config, "vault_path" | "install_id"> = {
