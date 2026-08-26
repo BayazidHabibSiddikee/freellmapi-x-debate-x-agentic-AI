@@ -426,7 +426,13 @@ export type Team = {
   selection_mode: "round_robin" | "random" | "manual";
   roles: Record<TeamRole, string[]>;
   skills?: string[];
+  wiki_page?: string;
   transcript_dir?: string;
+};
+
+export type TopJudge = {
+  character: string;
+  description?: string;
 };
 
 export type Orchestrator = {
@@ -439,16 +445,17 @@ export type Orchestrator = {
 export type TeamsConfig = {
   teams: Team[];
   orchestrator: Orchestrator;
+  top_judge?: TopJudge;
 };
 
 export function getTeamsConfig(): TeamsConfig {
   if (!existsSync(TEAMS_PATH)) {
-    return { teams: [], orchestrator: { character: "general_vector", mode: "fan_out_fan_in", team_selection: "all" } };
+    return { teams: [], orchestrator: { character: "general_vector", mode: "fan_out_fan_in", team_selection: "all" }, top_judge: { character: "solomon_hart" } };
   }
   try {
     return JSON.parse(readFileSync(TEAMS_PATH, "utf8"));
   } catch {
-    return { teams: [], orchestrator: { character: "general_vector", mode: "fan_out_fan_in", team_selection: "all" } };
+    return { teams: [], orchestrator: { character: "general_vector", mode: "fan_out_fan_in", team_selection: "all" }, top_judge: { character: "solomon_hart" } };
   }
 }
 
@@ -471,6 +478,10 @@ export function getTeamMembers(team: Team): string[] {
 
 export function getOrchestrator(): Orchestrator {
   return getTeamsConfig().orchestrator;
+}
+
+export function getTopJudge(): TopJudge {
+  return getTeamsConfig().top_judge ?? { character: "solomon_hart" };
 }
 
 /** Select the next character for a team role using the team's selection mode. */

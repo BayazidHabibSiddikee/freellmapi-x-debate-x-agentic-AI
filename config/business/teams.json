@@ -13,6 +13,7 @@
         "judge": ["solomon_hart"]
       },
       "skills": ["backend-architecture", "api-design"],
+      "wiki_page": "wiki/platform-team",
       "transcript_dir": "~/swordoffice/transcripts/platform"
     },
     {
@@ -27,7 +28,8 @@
         "researcher": ["iris_lund"],
         "judge": ["solomon_hart"]
       },
-      "skills": ["react-patterns", "ui-design"],
+      "skills": ["react-patterns", "ui-design", "flutter-patterns"],
+      "wiki_page": "wiki/frontend-team",
       "transcript_dir": "~/swordoffice/transcripts/frontend"
     },
     {
@@ -43,6 +45,7 @@
         "judge": ["solomon_hart"]
       },
       "skills": ["ml-engineering", "data-pipelines"],
+      "wiki_page": "wiki/data-ml-team",
       "transcript_dir": "~/swordoffice/transcripts/data-ml"
     },
     {
@@ -57,7 +60,8 @@
         "researcher": ["atlas_grey"],
         "judge": ["solomon_hart"]
       },
-      "skills": ["infrastructure", "deployment"],
+      "skills": ["infrastructure", "deployment", "docker-patterns"],
+      "wiki_page": "wiki/devops-team",
       "transcript_dir": "~/swordoffice/transcripts/devops"
     },
     {
@@ -72,7 +76,8 @@
         "researcher": ["vera_kline"],
         "judge": ["solomon_hart"]
       },
-      "skills": ["security-audit", "testing"],
+      "skills": ["security-audit", "testing", "e2e-testing"],
+      "wiki_page": "wiki/qa-security-team",
       "transcript_dir": "~/swordoffice/transcripts/qa-security"
     },
     {
@@ -87,7 +92,8 @@
         "researcher": ["ghost_-_the_bug"],
         "judge": ["solomon_hart"]
       },
-      "skills": ["deep-research", "market-intelligence"],
+      "skills": ["deep-research", "market-intelligence", "literature-review"],
+      "wiki_page": "wiki/research-team",
       "transcript_dir": "~/swordoffice/transcripts/research"
     },
     {
@@ -102,7 +108,8 @@
         "researcher": ["echo"],
         "judge": ["solomon_hart"]
       },
-      "skills": ["growth-engineering", "operations"],
+      "skills": ["growth-engineering", "operations", "content-engine"],
+      "wiki_page": "wiki/growth-ops-team",
       "transcript_dir": "~/swordoffice/transcripts/growth-ops"
     }
   ],
@@ -111,5 +118,9 @@
     "mode": "fan_out_fan_in",
     "team_selection": "all",
     "description": "Routes goals to appropriate teams, collects specs, and merges into master dispatch"
+  },
+  "top_judge": {
+    "character": "solomon_hart",
+    "description": "Merges team specs into master dispatch, flags conflicts"
   }
 }
