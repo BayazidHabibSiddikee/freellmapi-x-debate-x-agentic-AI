@@ -3,6 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { getConfig } from "@/lib/config";
 import { checkForUpdate } from "@/lib/updater";
 import { searchToolsAvailable } from "@/lib/search";
+import SettingsForm from "@/components/settings/SettingsForm";
+
+export const dynamic = "force-dynamic";
 
 export const dynamic = "force-dynamic";
 
@@ -73,19 +76,17 @@ export default async function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Auth</CardTitle>
+            <CardTitle className="text-sm font-medium">API Keys</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="text-muted-foreground">
-              Token-based localhost auth. Token lives at <code>~/.hermes/agentic-os/token</code>.
-              Rotate by deleting the file and restarting.
-            </p>
+          <CardContent>
+            <SettingsForm initialConfig={cfg} />
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
+
 
 function Row({ k, v }: { k: string; v: string }) {
   return (

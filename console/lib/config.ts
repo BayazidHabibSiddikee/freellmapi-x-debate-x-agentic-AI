@@ -23,6 +23,8 @@ export type Config = {
   hermes_token: string | null;
   last_check_for_updates: number | null;
   install_id: string;
+  telegram_bot_token?: string;
+  gmail_api_key?: string;
 };
 
 const DEFAULTS: Omit<Config, "vault_path" | "install_id"> = {
@@ -77,4 +79,24 @@ export function getConfig(): Config {
 
 export function clearConfigCache() {
   cached = null;
+}
+
+export async function updateConfig(key: keyof Config, value: any) {
+  const configPath =
+    process.env.AGENTIC_OS_CONFIG ??
+    join(homedir(), ".hermes", "agentic-os", "config.json");
+
+  let current: Partial<Config> = {};
+  if (existsSync(configPath)) {
+    try {
+      current = JSON.parse(readFileSync(configPath, "utf8"));
+    } catch (e) {
+      console.error("[config] failed to read for update:", e);
+    }
+  }
+
+  current[key] = value;
+  writeFileSync(configPath, JSON.stringify(current, null, 2));
+  clearConfigCache();
+  return getConfig();
 }
