@@ -798,6 +798,8 @@
             document.getElementById('sidebarOverlay').classList.toggle('open');
         }
 
+        function esc(s) { return (s || '').replace(/"/g, '&quot;'); }
+
         async function loadCharacters() {
             try {
                 const res = await fetch('/debate/api/characters');
@@ -812,16 +814,16 @@
                     const fallbackImg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><rect width="44" height="44" fill="%231a2235"/><text x="22" y="27" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif">${char.name.charAt(0)}</text></svg>`;
                     const imgSrc = char.image ? `/${char.image}` : fallbackImg;
                     
-                    const html = `
-                    <label class="char-card ${isSelected ? 'selected' : ''}">
-                        <input type="radio" name="selected_character" value="${char.name}" ${isSelected ? 'checked' : ''} onchange="updateCharCard(this)">
-                        <img src="${imgSrc}" class="char-avatar" onerror="this.src='${fallbackImg}'">
-                        <div class="char-info">
-                            <div class="char-name">${char.name}</div>
-                            <div class="char-status">Active Participant</div>
-                        </div>
-                    </label>
-                    `;
+                     const html = `
+                     <label class="char-card ${isSelected ? 'selected' : ''}">
+                         <input type="radio" name="selected_character" value="${esc(char.name)}" ${isSelected ? 'checked' : ''} onchange="updateCharCard(this)">
+                         <img src="${esc(imgSrc)}" class="char-avatar" onerror="this.src='${esc(fallbackImg)}'">
+                         <div class="char-info">
+                             <div class="char-name">${char.name}</div>
+                             <div class="char-status">Active Participant</div>
+                         </div>
+                     </label>
+                     `;
                     container.innerHTML += html;
                 });
                 updateHeaderMeta();
