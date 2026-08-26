@@ -41,7 +41,13 @@ with results fed back to the team for review.
 2. You describe a goal. The team debates it with cited context from your library.
 3. You press **Judge**, review the spec, press **Dispatch**.
 4. `claude` / `opencode` execute each subtask in its target repo.
-5. The team reviews the diffs and loops until the judge approves.
+5. **Phase 4 (built):** the coding agent's real **git diff** is captured and run
+   through a **team review panel** (Reviewer + Judge + Engineer + Security, from
+   `config/business/roles.json`). The panel votes APPROVE/REJECT; **rejected
+   work is auto-re-sent with the reviewers' feedback attached**, looping up to
+   `dispatch_max_retries`. The Dispatch Queue dashboard (`Dispatch (queue)`
+   button) runs subprojects concurrently via a background thread pool.
+6. The team reviews the diffs and loops until the judge approves.
 
 The same team is reachable from anywhere through **Telegram** (`@kaggle_shot_bot`)
 so a debate can happen while you're away from the desk.

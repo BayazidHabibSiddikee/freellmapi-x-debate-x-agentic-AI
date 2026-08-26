@@ -9,6 +9,19 @@ import {
   ROLE_PROMPTS,
 } from "@/lib/business";
 
+async function fetchTeams(): Promise<unknown[]> {
+  try {
+    const res = await fetch(
+      `${process.env.AGENT_TOOLS_URL ?? "http://127.0.0.1:5090"}/teams`,
+      { signal: AbortSignal.timeout(4_000) },
+    );
+    if (!res.ok) return [];
+    return (await res.json()).teams ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(req: NextRequest) {
   if (!validateToken(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const roles = getRoles();
@@ -23,5 +36,6 @@ export async function GET(req: NextRequest) {
     role_prompts: ROLE_PROMPTS,
     settings: getSettings(),
     projects: getProjects(),
+    teams: await fetchTeams(),
   });
 }

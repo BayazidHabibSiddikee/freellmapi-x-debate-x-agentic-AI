@@ -1,4 +1,16 @@
 {
+  "Director": {
+    "members": [
+      "[Obsession|¦|Thomas_Barrett]"
+    ],
+    "workspace": null
+  },
+  "Marketing": {
+    "members": [
+      "Makima_||_The_Control_Devil~"
+    ],
+    "workspace": null
+  },
   "CTO": {
     "members": [
       "Admiral_Statura"
@@ -27,6 +39,22 @@
     "workspace": "/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate"
   },
   "Analyst": {
+    "members": [],
+    "workspace": null
+  },
+  "Reviewer": {
+    "members": [],
+    "workspace": null
+  },
+  "DevOps": {
+    "members": [],
+    "workspace": null
+  },
+  "Security": {
+    "members": [],
+    "workspace": null
+  },
+  "Writer": {
     "members": [],
     "workspace": null
   }

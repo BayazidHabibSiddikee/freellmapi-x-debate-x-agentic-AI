@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Team charter — named teams each with their own roles, projects, settings, and persona overrides.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "default": 1 },
+    "teams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+          "name": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "default": "" },
+          "color": { "type": "string", "default": "#6366f1" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "roles": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "members": { "type": "array", "items": { "type": "string" } },
+                "workspace": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "folder": { "type": "string" },
+                "assignments": { "type": "array", "items": {
+                  "type": "object",
+                  "properties": {
+                    "character_id": { "type": "string" },
+                    "role": { "type": "string" }
+                  }
+                }}
+              }
+            }
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "model": { "type": "string", "default": "auto" },
+              "temperature": { "type": "number", "default": 0.7 },
+              "max_tokens": { "type": "integer", "default": 500 },
+              "history_turns": { "type": "integer", "default": 6 },
+              "rag_k": { "type": "integer", "default": 6 },
+              "use_rag": { "type": "boolean", "default": true },
+              "dispatch_agent_default": { "type": "string", "default": "claude" },
+              "dispatch_timeout_seconds": { "type": "integer", "default": 900 },
+              "allow_file_writes": { "type": "boolean", "default": false },
+              "active_project": { "type": ["string", "null"] }
+            }
+          },
+          "persona_overrides": {
+            "type": "object",
+            "description": "Per-character tool grants and prompt overrides scoped to this team."
+          }
+        }
+      }
+    },
+    "active_team_id": { "type": ["string", "null"], "default": null }
+  }
+}

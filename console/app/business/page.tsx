@@ -14,7 +14,6 @@ import { ProjectsCard, type Project } from "./projects-card";
 import { LogsCard } from "./logs-card";
 import { SettingsCard, type Settings } from "./settings-card";
 import { DispatchQueueCard } from "./dispatch-queue-card";
-import { PipelineRunnerCard } from "./pipeline-runner-card";
 
 type Turn = { speaker: string; role?: string; text: string; used_rag?: boolean };
 type Roster = {
@@ -507,10 +506,8 @@ async function runQueueSubtasks() {
       <LogsCard tokenQS={tokenQS} />
 
         </div>
-        {/* Right column: pipeline + dispatch panel — pinned to viewport */}
+        {/* Right column: dispatch panel — pinned to viewport */}
         <div className="lg:sticky lg:top-6 lg:self-start">
-
-      <PipelineRunnerCard />
 
       <DispatchQueueCard tokenQS={tokenQS} />
 

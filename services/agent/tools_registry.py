@@ -10,10 +10,12 @@ Import path: tools live at <monorepo>/tools. We insert the repo root into
 sys.path so `from tools import pdf_downloader` works regardless of cwd.
 """
 
+import json
 import os
 import sys
 import shutil
 import tempfile
+import urllib.request
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -39,6 +41,7 @@ def _try(name: str):
 pdf_downloader = _try("tools.pdf_downloader")
 youtube_transcript = _try("tools.youtube_transcript")
 stealth_browser = _try("tools.stealth_browser")
+raspberry_pi_imager = _try("tools.raspberry_pi_imager")
 
 
 # ── Tool implementations ─────────────────────────────────────────────────────
@@ -113,6 +116,41 @@ def youtube_transcript_tool(url_or_text: str) -> Dict[str, Any]:
         url = extracted if isinstance(extracted, str) else extracted[0]
     text = youtube_transcript.get_youtube_transcript(url)
     return {"url": url, "chars": len(text), "transcript_excerpt": text[:2000]}
+
+
+def install_raspberry_pi_imager(platform_key: str = "auto",
+                                output_dir: str = None,
+                                overwrite: bool = False) -> Dict[str, Any]:
+    """Download the latest Raspberry Pi Imager installer.
+
+    Auto-detects the current platform by default, then matches the right asset
+    from the latest GitHub release (raspberrypi/rpi-imager). Skips re-download
+    when the file already exists with matching size.
+
+    Returns a dict with keys: ok, version, platform, filepath, url, size_bytes,
+    asset_name.
+    """
+    if raspberry_pi_imager is None:
+        raise RuntimeError("tools/raspberry_pi_imager.py could not be imported")
+    return raspberry_pi_imager.download_imager(
+        platform_key=platform_key,
+        output_dir=output_dir,
+        overwrite=overwrite,
+    )
+
+
+def list_raspberry_pi_imager_assets() -> Dict[str, Any]:
+    """List the assets in the latest Raspberry Pi Imager release."""
+    if raspberry_pi_imager is None:
+        raise RuntimeError("tools/raspberry_pi_imager.py could not be imported")
+    assets = raspberry_pi_imager.list_available_assets()
+    return {
+        "count": len(assets),
+        "assets": [
+            {"name": a["name"], "size": a["size"], "url": a["browser_download_url"]}
+            for a in assets
+        ],
+    }
 
 
 def web_search(query: str) -> Dict[str, Any]:
@@ -210,6 +248,80 @@ def _cross_team_search_wrapper(query: str, exclude_team: Optional[str] = None,
     return {"query": query, "count": len(results),
             "results": results,
             "note": "insights are from teams OTHER than yours by default"}
+
+
+def _urgent_alert_wrapper(message: str, receiver_emails: Optional[List[str]] = None,
+                          team: str = "", urgency: str = "normal") -> Dict[str, Any]:
+    """Send an urgent paged alert via the configured Telegram bot(s) to owners.
+
+    Looks up config/business/settings.json → telegram_bots[].owner_email / gmails.
+    Sends to each matching bot's configured owner email (via the console's
+    /api/business/telegram/send POST endpoint), so the message lands in the
+    owner's Telegram group where the bot is running.
+
+    The `receiver_emails` arg is an explicit override when called mid-debate
+    and the caller wants to page a specific person rather than every owner.
+    """
+    import urllib.request
+
+    settings_file = Path(__file__).resolve().parents[2] / "config" / "business" / "settings.json"
+    try:
+        settings = json.loads(settings_file.read_text()) if settings_file.exists() else {}
+    except Exception:  # noqa: BLE001
+        settings = {}
+
+    bots = settings.get("telegram_bots") or []
+    targets: List[Dict[str, str]] = []
+    seen: set = set()
+    for b in bots:
+        if not b.get("active", True):
+            continue
+        owner = (b.get("owner_email") or "").strip()
+        gmails = [g.strip() for g in (b.get("gmails") or []) if g.strip()]
+        for email in ([owner] + gmails):
+            if email and email not in seen:
+                seen.add(email)
+                targets.append({"email": email, "bot": b.get("id", "default")})
+
+    if not targets:
+        return {"sent": False, "reason": "no telegram bots configured",
+                "targets": []}
+
+    # Route through the local console endpoint (Bearer-authed, same token flow)
+    token_file = Path.home() / ".hermes" / "agentic-os" / "token"
+    token = token_file.read_text().strip() if token_file.exists() else ""
+    console_url = os.environ.get(
+        "CONSOLE_PUBLIC_URL",
+        os.environ.get("CONSOLE_URL", "http://localhost:18443"),
+    )
+    payload = json.dumps({
+        "message": message[:2000],
+        "urgency": urgency,
+        "team": team or os.environ.get("AGENT_TEAM", ""),
+        "targets": targets,
+    }).encode()
+
+    sent, errors = [], []
+    for t in targets:
+        try:
+            req = urllib.request.Request(
+                f"{console_url}/api/business/telegram/send",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {token}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                result = json.loads(resp.read())
+            sent.append({"target": t["email"], "ok": resp.status == 200})
+        except Exception as e:  # noqa: BLE001
+            errors.append({"target": t["email"], "err": str(e)[:200]})
+
+    return {"sent": bool(sent and all(s["ok"] for s in sent)),
+            "delivered": len([s for s in sent if s["ok"]]),
+            "failed": len(errors), "details": sent + errors}
 
 
 # ── Coding via headless CLI (Engineer-only) ───────────────────────────────────
@@ -552,6 +664,64 @@ TOOLS: Dict[str, Dict[str, Any]] = {
         "roles": {"CTO", "PM", "Judge", "Researcher", "Analyst", "Engineer",
                    "Reviewer", "DevOps", "Security", "Writer"},
         "func": _cross_team_search_wrapper,
+    },
+    "urgent_alert": {
+        "description": (
+            "Page an owner immediately via their configured Telegram bot. "
+            "Send when you need a human decision before proceeding (blocked spec, "
+            "conflicting evidence, safety gate). The message goes to all bot owners "
+            "and CC'd gmails from config/business/settings.json. Non-coders may use "
+            "this; it's a communication tool, not a code tool."
+        ),
+        "args": {
+            "message": {"type": "string", "required": True,
+                         "desc": "What to alert about — be specific, under 2000 chars"},
+            "receiver_emails": {"type": "array", "items": "string", "required": False,
+                                "default": None,
+                                "desc": "Override: page only these emails instead of all owners"},
+            "team": {"type": "string", "required": False, "default": "",
+                      "desc": "Team id being paged (defaults to AGENT_TEAM env)"},
+            "urgency": {"type": "string", "required": False, "default": "normal",
+                         "desc": "'normal' | 'high' — high priority gets ⚠️ prefix"},
+        },
+        "roles": {"CTO", "PM", "Judge", "Analyst", "Researcher", "Engineer",
+                   "Reviewer", "DevOps", "Security", "Writer"},
+        "func": _urgent_alert_wrapper,
+    },
+    # ── Device / system tooling ─────────────────────────────────────────────────
+    "install_raspberry_pi_imager": {
+        "description": (
+            "Download the latest Raspberry Pi Imager installer for the current "
+            "or specified platform. Auto-detects Windows/macOS/Linux and "
+            "architecture, picks the right .exe/.dmg/.deb from the official "
+            "raspberrypi/rpi-imager GitHub release, and saves it under "
+            "~/downloads/ (or the directory you choose). Skips re-download "
+            "when the file already exists with matching size."
+        ),
+        "args": {
+            "platform_key": {"type": "string", "required": False, "default": "auto",
+                             "desc": "'auto' | 'windows' | 'macos' | 'linux-amd64' "
+                                      "| 'linux-arm64' | 'linux-armhf'"},
+            "output_dir": {"type": "string", "required": False, "default": None,
+                           "desc": "Output directory under ~ (default: tools/downloads/)"},
+            "overwrite": {"type": "boolean", "required": False, "default": False,
+                          "desc": "Re-download even when the file already exists"},
+        },
+        # DevOps + Engineer for system installer work, plus CTO and Researcher
+        # who sometimes need to flash images for edge devices.
+        "roles": {"CTO", "DevOps", "Engineer", "Researcher"},
+        "func": install_raspberry_pi_imager,
+    },
+    "list_raspberry_pi_imager_assets": {
+        "description": (
+            "List all assets (Windows .exe, macOS .dmg, Linux .deb for each "
+            "arch, source tarballs) in the latest Raspberry Pi Imager release. "
+            "Use this when you need to know which file to download manually "
+            "or check whether a CLI-only build is available."
+        ),
+        "args": {},
+        "roles": {"CTO", "DevOps", "Engineer", "Researcher"},
+        "func": list_raspberry_pi_imager_assets,
     },
 }
 

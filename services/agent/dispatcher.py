@@ -289,7 +289,49 @@ def resolve_workspace(path: str) -> str:
     return str(expanded)
 
 
-def dispatch_subtask(task: Dict[str, Any]) -> Dict[str, Any]:
+# ── Diff capture (the review loop sees what the agent actually changed) ───────
+
+DIFF_LIMIT = int(os.environ.get("DIFF_LIMIT", "20000"))
+
+
+def capture_diff(cwd: str) -> Dict[str, Any]:
+    """Snapshot the working-tree changes a coding agent left behind.
+
+    Returns {repo, is_git, files, stat, diff}. `files` is the porcelain list of
+    changed/new paths; `diff` is the unified diff (truncated to DIFF_LIMIT).
+    Non-git directories return is_git=False and empty bodies — the reviewer
+    then falls back to the agent's textual output only.
+    """
+    if not cwd or not Path(cwd).is_dir():
+        return {"repo": cwd, "is_git": False, "files": [], "stat": "", "diff": ""}
+    try:
+        proc_status = subprocess.run(
+            ["git", "-C", cwd, "status", "--porcelain"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if proc_status.returncode != 0:
+            return {"repo": cwd, "is_git": False, "files": [], "stat": "", "diff": ""}
+        files = [ln for ln in (proc_status.stdout or "").splitlines() if ln.strip()]
+        proc_stat = subprocess.run(
+            ["git", "-C", cwd, "diff", "--stat"],
+            capture_output=True, text=True, timeout=30,
+        )
+        proc_diff = subprocess.run(
+            ["git", "-C", cwd, "diff"],
+            capture_output=True, text=True, timeout=60,
+        )
+        stat = (proc_stat.stdout or "")[:2000]
+        diff = (proc_diff.stdout or "")[:DIFF_LIMIT]
+        if not diff and files:
+            # Untracked files never show in `git diff` — list them explicitly.
+            diff = "\n".join(f"# new/untracked: {ln}" for ln in files[:200])
+        return {"repo": cwd, "is_git": True, "files": files, "stat": stat, "diff": diff}
+    except Exception as e:  # noqa: BLE001 — diff capture must never break dispatch
+        return {"repo": cwd, "is_git": False, "files": [], "stat": "",
+                "diff": f"<diff capture failed: {e}>"}
+
+
+def dispatch_subtask(task: Dict[str, Any], _retried: bool = False) -> Dict[str, Any]:
     settings = _load_business_settings()
     agent = task.get("agent") or settings.get("dispatch_agent_default", "claude")
 
@@ -315,7 +357,6 @@ def dispatch_subtask(task: Dict[str, Any]) -> Dict[str, Any]:
         return {**task, "status": "failed", "error": f"cwd does not exist: {cwd}"}
 
     timeout = int(settings.get("dispatch_timeout_seconds", DISPATCH_TIMEOUT))
-    log_event("dispatch_task", id=task.get("id"), agent=agent, cwd=cwd)
     try:
         proc = subprocess.run(
             [*argv, task["prompt"]],
@@ -332,6 +373,9 @@ def dispatch_subtask(task: Dict[str, Any]) -> Dict[str, Any]:
             "output": (proc.stdout or "")[-4000:],
             "error": (proc.stderr or "")[-1000:] if not ok else "",
         }
+        # Phase 4: capture the real code changes for the team review
+        if ok:
+            result["diff"] = capture_diff(cwd)
         log_event("dispatch_task", id=task.get("id"), status=result["status"])
         return result
     except subprocess.TimeoutExpired:
@@ -341,6 +385,128 @@ def dispatch_subtask(task: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:  # noqa: BLE001
         log_event("dispatch_task", id=task.get("id"), status="failed", error=str(e)[:300])
         return {**task, "status": "failed", "error": str(e)[:500]}
+
+
+# ── Team review vote (Phase 4: subtask → diff → team review → auto-retry) ─────
+
+REVIEW_PANEL_SYSTEM = """You are a senior reviewer on the team. You are reviewing a
+coding subtask that a headless coding agent just executed. You see the original
+prompt, the agent's reported output, and the actual diff (file changes).
+
+Reply EXACTLY in this format, no other text:
+VERDICT: APPROVE | REJECT
+FEEDBACK: one or two concrete, actionable lines (reference files/functions if
+known). Must be empty if APPROVE.
+"""
+
+# Preferred role order when selecting a review panel from config/business/roles.json
+REVIEW_ROLE_PRIORITY = ["Reviewer", "Judge", "Engineer", "Security", "DevOps", "CTO"]
+REVIEW_MAX_PANEL = int(os.environ.get("REVIEW_MAX_PANEL", "3"))
+
+
+def _load_review_panel() -> List[Dict[str, str]]:
+    """Pick up to REVIEW_MAX_PANEL personas from assigned roles to vote.
+
+    Reads config/business/roles.json ({role: {members:[ids]}}) and walks it in
+    REVIEW_ROLE_PRIORITY order so reviewers/Judges weigh in before engineers.
+    Falls back to a generic Reviewer if nothing is assigned.
+    """
+    roles_path = Path(__file__).resolve().parents[2] / "config" / "business" / "roles.json"
+    try:
+        with open(roles_path) as f:
+            roles = json.load(f) or {}
+    except Exception:  # noqa: BLE001
+        roles = {}
+    panel: List[Dict[str, str]] = []
+    seen = set()
+    for role in REVIEW_ROLE_PRIORITY:
+        cfg = roles.get(role, {})
+        members = cfg.get("members") if isinstance(cfg, dict) else []
+        if not isinstance(members, list):
+            continue
+        for m in members:
+            if m in seen:
+                continue
+            seen.add(m)
+            panel.append({"role": role, "person_id": str(m)})
+            if len(panel) >= REVIEW_MAX_PANEL:
+                return panel
+    if not panel:
+        panel = [{"role": "Reviewer", "person_id": "reviewer"},
+                 {"role": "Security", "person_id": "security"}]
+    return panel
+
+
+def _ask_reviewer(member: Dict[str, str], task: Dict[str, Any],
+                  output: str, diff: str) -> Dict[str, str]:
+    """One reviewer persona votes over the agent's output + diff."""
+    try:
+        raw = _llm(
+            [
+                {"role": "system", "content": REVIEW_PANEL_SYSTEM},
+                {"role": "user",
+                 "content": (
+                     f"Subtask: {task.get('title', '')}\n"
+                     f"Prompt: {task.get('prompt', '')[:900]}\n\n"
+                     f"Agent output:\n{output[:2500]}\n\n"
+                     f"Diff:\n{diff[:4000] if diff else '(no diff captured)'}"
+                 )},
+            ],
+            JUDGE_MODEL,
+            timeout=90,
+        )
+        raw = raw.strip()
+        verdict = "APPROVE" if "APPROVE" in raw.upper() and "REJECT" not in raw.upper() else "REJECT"
+        fb = ""
+        m = re.search(r"FEEDBACK:\s*(.+)", raw, re.DOTALL)
+        if m:
+            fb = " ".join(m.group(1).split())[:400]
+        return {"reviewer": f"{member['role']} ({member['person_id']})",
+                "role": member["role"], "person_id": member["person_id"],
+                "verdict": verdict, "feedback": fb, "raw": raw[:400]}
+    except Exception as e:  # noqa: BLE001 — a reviewer failure never blocks dispatch
+        return {"reviewer": member["role"], "role": member["role"],
+                "person_id": member.get("person_id", ""),
+                "verdict": "ERROR", "feedback": f"review unavailable: {e}",
+                "raw": "", "error": True}
+
+
+def _render_review_context(result: Dict[str, Any]) -> str:
+    """Human-readable output + diff block to show a reviewer."""
+    diff = result.get("diff") or {}
+    diff_text = diff.get("diff") or "" if isinstance(diff, dict) else str(diff)
+    parts = []
+    if isinstance(diff, dict):
+        if diff.get("is_git"):
+            parts.append(f"Files changed ({len(diff.get('files') or [])}):\n" +
+                         "\n".join(diff.get("files", [])[:40]))
+            if diff.get("stat"):
+                parts.append(f"Diff stat:\n{diff['stat']}")
+        if diff_text:
+            parts.append(f"Diff:\n{diff_text}")
+    return "\n\n".join(parts)
+
+
+def team_review(task: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
+    """Run the whole review panel and aggregate to a majority verdict.
+
+    Returns {votes, approved, feedback, total, approve, reject}.
+    """
+    output = result.get("output") or ""
+    context = _render_review_context(result)
+    panel = _load_review_panel()
+    votes = [_ask_reviewer(m, task, output, context) for m in panel]
+    valid = [v for v in votes if v.get("verdict") in ("APPROVE", "REJECT")]
+    rejects = [v for v in valid if v["verdict"] == "REJECT"]
+    approved = bool(valid) and len(rejects) == 0
+    feedback = "\n".join(
+        f"- [{v['role']} {v.get('person_id', '')}] {v['feedback'] or '(no specific feedback)'}"
+        for v in rejects
+    ) or ("" if approved else "review could not reach a verdict")
+    return {"votes": votes, "approved": approved, "feedback": feedback,
+            "total": len(votes),
+            "approve": sum(1 for v in valid if v["verdict"] == "APPROVE"),
+            "reject": len(rejects)}
 
 
 def verify_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -367,40 +533,111 @@ def verify_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         r["_flags"] = flags
     return results
 
+def _run_task_with_loop(spec: Dict[str, Any], task: Dict[str, Any],
+                        settings: Dict[str, Any],
+                        max_retries: int,
+                        review_enabled: bool) -> Dict[str, Any]:
+    """Phase 4 loop for ONE subtask: run → capture diff → team review →
+    auto-retry on rejection (with reviewer feedback), until approved or maxed.
+
+    Also keeps the original one-retry-on-hard-failure behaviour: if the coding
+    agent exits non-zero / times out it is re-run once before any review.
+    """
+    result = None
+    attempts = 0
+    for attempt in range(max_retries + 1):
+        attempts += 1
+
+        r = dispatch_subtask(task)
+        # Hard-failure retry (no review needed — it never produced a diff)
+        if r["status"] in {"failed", "timeout"} and not r.get("_retried"):
+            r["_retried"] = True
+            log_event("dispatch_retry", id=task.get("id"), attempt=attempts)
+            r = dispatch_subtask(r)
+            if r["status"] in {"failed", "timeout"}:
+                r["_retry_failed"] = True
+        result = r
+        r["attempts"] = attempts
+
+        if r["status"] != "done":
+            break  # failed/timeout — review can't fix a crash
+
+        if not review_enabled:
+            r["review"] = {"approved": True, "note": "team review disabled in settings",
+                           "total": 0, "approve": 0, "reject": 0}
+            r["reviews"] = []
+            break
+
+        # Phase 4: every completed run goes before the review panel.
+        review = team_review(task, r)
+        r["review"] = review
+        r["reviews"] = review["votes"]
+        if review["approved"]:
+            log_event("review_approved", id=task.get("id"),
+                      attempt=attempts, approve=review["approve"], total=review["total"])
+            break
+
+        # Rejected → feed the concrete feedback back and re-run, if budget remains.
+        log_event("review_reject", id=task.get("id"),
+                  attempt=attempts, reject=review["reject"])
+        if attempt >= max_retries:
+            r["status"] = "rejected"
+            r["reject_reason"] = review["feedback"] or "no reviewer gave actionable feedback"
+            break
+        feedback = review["feedback"] or "reviewer gave no specific feedback — re-read the prompt and fix obvious issues."
+        task = {
+            **task,
+            "prompt": task["prompt"] + (
+                "\n\n---\nA teammate REJECTED your previous attempt. Redo the task and "
+                f"ADDRESS this feedback (fix the code, don't restate intent):\n{feedback}"
+            ),
+        }
+        log_event("dispatch_review_retry", id=task.get("id"), attempt=attempts + 1)
+    return result
+
 
 def dispatch_spec(spec: Dict[str, Any],
                   only: Optional[List[str]] = None) -> Dict[str, Any]:
-    """Dispatch all (or selected) subtasks sequentially with retry on failure."""
-    results = []
-    for task in spec.get("subtasks", []):
-        if only and task["id"] not in only:
-            continue
+    """Dispatch all (or selected) subtasks sequentially through the review loop.
 
-        # Execute with one retry on failure
-        result = dispatch_subtask(task)
-        if result["status"] in {"failed", "timeout"} and result.get("_retried") is not True:
-            result = {**result, "_retried": True}
-            log_event("dispatch_retry", id=task.get("id"))
-            retry_result = dispatch_subtask(result)
-            if retry_result["status"] in {"failed", "timeout"}:
-                retry_result["_retry_failed"] = True
-            result = retry_result
+    Each subtask now runs → captures its git diff → the team review panel votes
+    APPROVE/REJECT → rejected work is auto-resent to the coding agent with the
+    feedback attached, up to `dispatch_max_retries`.
+    """
+    settings = _load_business_settings()
+    max_retries = max(0, int(settings.get("dispatch_max_retries", 1)))
+    review_enabled = bool(settings.get("team_review", True))
 
-        results.append(result)
+    results = [
+        _run_task_with_loop(spec, task, settings, max_retries, review_enabled)
+        for task in spec.get("subtasks", [])
+        if not (only and task["id"] not in only)
+    ]
 
-    # Post-dispatch verification gate
     results = verify_results(results)
 
     done = sum(1 for r in results if r["status"] == "done")
+    rejected = sum(1 for r in results if r["status"] == "rejected")
+    failed = sum(1 for r in results if r["status"] in {"failed", "timeout"})
     flagged = sum(1 for r in results if r.get("_flags"))
+    review_rejects = sum(1 for r in results if (r.get("review") or {}).get("reject", 0) > 0)
+
     return {
         "goal": spec.get("goal"),
         "results": results,
+        "review_summary": {
+            "total": sum((r.get("review") or {}).get("total", 0) for r in results),
+            "approve": sum((r.get("review") or {}).get("approve", 0) for r in results),
+            "rejects": review_rejects,
+            "rejected_subtasks": rejected,
+            "needs_attention": review_rejects > 0 or rejected > 0,
+        },
         "summary": {
             "total": len(results),
             "done": done,
-            "failed": sum(1 for r in results if r["status"] in {"failed", "timeout"}),
+            "failed": failed,
+            "rejected": rejected,
             "flagged": flagged,
-            "needs_attention": flagged > 0,
+            "needs_attention": flagged > 0 or rejected > 0,
         },
     }

@@ -150,6 +150,8 @@ local FreeLLM proxy on :3001 — nothing talks to remote APIs directly.
 | Judge returns garbage JSON | Retry once; check `model` in Settings (`auto` routes well) |
 | Dispatch fails "CLI not found" | Install `claude` / `opencode` CLIs and ensure they're on PATH |
 | Dispatch can't write files | Enable file writes in Settings or set `CLAUDE_FLAGS` |
+| Dispatch rejects my work (team review) | The subtask was REJECTED by the panel — retries already auto-loop on `dispatch_max_retries`; inspect the diff + reviewer feedback in the Dispatch Queue dashboard |
+| Parallel dispatch not running | Ensure `claude`/`opencode` are on PATH; check `logs/activity.jsonl` for `job_started` events |
 | Downloads find nothing | PDF sources are flaky; try more specific titles, or run Camoufox (`camofox-browser`) for the stealth-search cascade |
 | RAG health shows `"hybrid": false` | `pip install rank-bm25` in `services/debate/venv` |
 | Telegram silent | Check `logs/telegram.log`; verify token with `curl https://api.telegram.org/bot<TOKEN>/getMe` |

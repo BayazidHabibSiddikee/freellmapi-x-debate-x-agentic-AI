@@ -30,7 +30,7 @@ app = FastAPI(title="AI Debate Simulator")
 
 # Configuration from environment
 OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "http://localhost:3001/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.5-flash")
+LLM_MODEL = os.getenv("LLM_MODEL", "auto")
 RAG_SERVER_URL = os.getenv("RAG_SERVER_URL", "http://localhost:5080")
 DEBUG_MODE = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1", "t")
 

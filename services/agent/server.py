@@ -17,6 +17,9 @@ from pydantic import BaseModel
 
 from tools_registry import execute, list_tools, report, ToolError
 from dispatcher import judge_spec, dispatch_spec
+# Local jobs.py provides the dispatch queue (named `jobs`, not `queue`, to keep
+# the stdlib `queue` importable for ThreadPoolExecutor internals).
+from jobs import enqueue, cancel, list_jobs, status as queue_status
 from activity import log_event
 import db
 
@@ -104,6 +107,60 @@ async def dispatch(req: DispatchRequest):
         return {"ok": False, "error": str(e)[:500]}
 
 
+# ── Jobs / parallel dispatch queue (multi-project) ───────────────────────────
+
+class JobCreateRequest(BaseModel):
+    spec: dict
+    project: dict = {}          # {id, name, folder} — optional folder pin
+    target_repo: str = ""       # explicit folder for every subtask
+
+
+@app.post("/jobs")
+async def jobs_create(req: JobCreateRequest):
+    """Enqueue a spec and run its subtasks across the parallel pool."""
+    try:
+        spec = req.spec
+        if not isinstance(spec.get("subtasks"), list) or not spec["subtasks"]:
+            return {"ok": False, "error": "spec with subtasks is required"}
+        project = req.project or None
+        target = req.target_repo.strip() or None
+        job = await asyncio.to_thread(enqueue, project, spec, target)
+        log_event("jobs_create", job=job.get("id"),
+                  project=(project or {}).get("name"), subtasks=job.get("subtasks"))
+        return {"ok": True, "job": job}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:500]}
+
+
+@app.get("/jobs")
+async def jobs_list(limit: int = 30):
+    try:
+        return {"ok": True, "jobs": list_jobs(min(limit, 100))}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:500]}
+
+
+@app.get("/jobs/{job_id}")
+async def jobs_detail(job_id: str):
+    job = db.get_job(job_id)
+    if not job:
+        return {"ok": False, "error": "job not found"}
+    return {"ok": True, "job": job}
+
+
+@app.post("/jobs/{job_id}/cancel")
+async def jobs_cancel(job_id: str):
+    ok = await asyncio.to_thread(cancel, job_id)
+    if not ok:
+        return {"ok": False, "error": "job not found"}
+    return {"ok": True}
+
+
+@app.get("/queue/status")
+async def queue_status_endpoint():
+    return {"ok": True, "queue": queue_status()}
+
+
 
 # ── Office: persistent rooms, messages, persona memory ───────────────────────
 
@@ -179,6 +236,31 @@ async def persona_memory_context(character_id: str, limit: int = 6,
                                  about: str = ""):
     subjects = [s.strip() for s in about.split(",") if s.strip()] or None
     return {"context": db.memory_context(character_id, limit, subjects)}
+
+
+# ── Teams ─────────────────────────────────────────────────────────────────────
+
+class TeamIn(BaseModel):
+    id: Optional[str] = None
+    name: str
+    charter: str = ""
+
+
+@app.get("/teams")
+async def teams_list():
+    return {"teams": db.list_teams()}
+
+
+@app.post("/teams")
+async def teams_create(req: TeamIn):
+    import uuid
+    team_id = req.id or f"team_{uuid.uuid4().hex[:8]}"
+    return {"ok": True, "team": db.create_team(team_id, req.name, req.charter)}
+
+
+@app.delete("/teams/{team_id}")
+async def teams_delete(team_id: str):
+    return {"ok": db.delete_team(team_id)}
 
 if __name__ == "__main__":
     import argparse
