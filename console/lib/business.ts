@@ -423,6 +423,11 @@ export function activeProject(): Project | null {
 
 export type TeamRole = "lead" | "pm" | "engineer" | "researcher" | "judge";
 
+export type EscalationThreshold = {
+  max_files?: number;
+  max_lines?: number;
+};
+
 export type DailyCycle = {
   enabled: boolean;
   iterations: number;
@@ -430,6 +435,7 @@ export type DailyCycle = {
   branch_strategy: string;
   auto_commit: boolean;
   requires_review_panel: boolean;
+  escalation_threshold?: EscalationThreshold;
 };
 
 export type Team = {

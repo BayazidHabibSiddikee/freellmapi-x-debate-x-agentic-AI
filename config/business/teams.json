@@ -20,7 +20,11 @@
         "schedule": "09:00",
         "branch_strategy": "feature/platform-{date}",
         "auto_commit": false,
-        "requires_review_panel": true
+        "requires_review_panel": true,
+        "escalation_threshold": {
+          "max_files": 5,
+          "max_lines": 200
+        }
       }
     },
     {
@@ -43,7 +47,11 @@
         "schedule": "09:00",
         "branch_strategy": "feature/frontend-{date}",
         "auto_commit": false,
-        "requires_review_panel": true
+        "requires_review_panel": true,
+        "escalation_threshold": {
+          "max_files": 5,
+          "max_lines": 200
+        }
       }
     },
     {
@@ -66,7 +74,11 @@
         "schedule": "09:00",
         "branch_strategy": "feature/data_ml-{date}",
         "auto_commit": false,
-        "requires_review_panel": true
+        "requires_review_panel": true,
+        "escalation_threshold": {
+          "max_files": 5,
+          "max_lines": 200
+        }
       }
     },
     {
@@ -89,7 +101,11 @@
         "schedule": "09:00",
         "branch_strategy": "feature/devops_sre-{date}",
         "auto_commit": false,
-        "requires_review_panel": true
+        "requires_review_panel": true,
+        "escalation_threshold": {
+          "max_files": 5,
+          "max_lines": 200
+        }
       }
     },
     {
@@ -112,7 +128,11 @@
         "schedule": "09:00",
         "branch_strategy": "feature/qa_security-{date}",
         "auto_commit": false,
-        "requires_review_panel": true
+        "requires_review_panel": true,
+        "escalation_threshold": {
+          "max_files": 5,
+          "max_lines": 200
+        }
       }
     },
     {
@@ -135,7 +155,11 @@
         "schedule": "09:00",
         "branch_strategy": "feature/research-{date}",
         "auto_commit": false,
-        "requires_review_panel": true
+        "requires_review_panel": true,
+        "escalation_threshold": {
+          "max_files": 5,
+          "max_lines": 200
+        }
       }
     },
     {
@@ -158,7 +182,11 @@
         "schedule": "09:00",
         "branch_strategy": "feature/growth_ops-{date}",
         "auto_commit": false,
-        "requires_review_panel": true
+        "requires_review_panel": true,
+        "escalation_threshold": {
+          "max_files": 5,
+          "max_lines": 200
+        }
       }
     }
   ],

@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { initDb } from './db/index.js';
 import { startHealthChecker } from './services/health.js';
 import { startCatalogSync } from './services/catalog-sync.js';
+import { startScheduler } from './services/daily-scheduler.js';
 
 const PORT = process.env.PORT ?? 3001;
 // Dual-stack ('::') by default so the dashboard is reachable over both IPv4
@@ -20,6 +21,7 @@ async function main() {
     console.log(`Proxy endpoint: http://${display}:${PORT}/v1/chat/completions`);
     startHealthChecker();
     startCatalogSync();
+    startScheduler();
   };
 
   const server = app.listen(Number(PORT), HOST, onReady(HOST));

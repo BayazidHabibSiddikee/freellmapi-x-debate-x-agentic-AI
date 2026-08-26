@@ -17,9 +17,11 @@
     "desktop:dist:win": "npm run build -w client && npm --prefix desktop run dist:win"
   },
   "devDependencies": {
+    "@types/node-cron": "^3.0.11",
     "concurrently": "^9.1.2"
   },
   "dependencies": {
+    "node-cron": "^4.6.0",
     "playwright-core": "^1.62.1"
   }
 }
