@@ -9,22 +9,9 @@ export type Character = {
   system_prompt?: string;
 };
 
-let _t: string | null = null;
-
-/** Auth token from ?t= query or cookie, for <img> URLs that can't send headers. */
+/** Auth token — no longer needed for localhost, returns empty string. */
 export function tokenQS(): string {
-  if (_t === null) {
-    const m =
-      typeof window !== "undefined"
-        ? window.location.search.match(/[?&]t=([a-f0-9]+)/)
-        : null;
-    _t = m ? m[1] : "";
-    if (!_t && typeof document !== "undefined") {
-      const c = document.cookie.match(/agentic_os_token=([a-f0-9]+)/);
-      _t = c ? c[1] : "";
-    }
-  }
-  return encodeURIComponent(_t);
+  return "";
 }
 
 export function Avatar({

@@ -51,6 +51,12 @@ export function getOrCreateToken(): string {
  *   3. Cookie agentic_os_token (set after first valid request)
  */
 export function validateToken(req: NextRequest): boolean {
+  // Localhost-bound single-user product: always trust loopback requests
+  const host = req.headers.get("host") ?? "";
+  if (/^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/.test(host)) {
+    return true;
+  }
+
   const expected = getOrCreateToken();
 
   const auth = req.headers.get("authorization");
@@ -63,16 +69,6 @@ export function validateToken(req: NextRequest): boolean {
 
   const cookie = req.cookies.get("agentic_os_token")?.value;
   if (cookie && cookie === expected) return true;
-
-  // Localhost-bound single-user product: a request that carries NO
-  // credentials at all and originates from loopback is trusted.
-  // Anything presenting a wrong token is still rejected.
-  if (!auth && !t && !cookie) {
-    const host = req.headers.get("host") ?? "";
-    if (/^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/.test(host)) {
-      return true;
-    }
-  }
 
   return false;
 }
