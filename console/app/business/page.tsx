@@ -11,15 +11,16 @@ import { RolesCard, type RoleConfig } from "./roles-card";
 import { TeamsCard, type Team } from "./teams-card";
 import { ProjectsCard, type Project } from "./projects-card";
 import { LogsCard } from "./logs-card";
-import { SettingsCard, type Settings as SettingsType } from "./settings-card";
+import { SettingsCard, type Settings } from "./settings-card";
 import { DispatchQueueCard } from "./dispatch-queue-card";
+import { TranscriptPanel } from "./transcript-panel";
 
 type Turn = { speaker: string; role?: string; text: string; used_rag?: boolean };
 type Roster = {
   characters: Character[];
   roles: Record<string, RoleConfig>;
   role_list: string[];
-  settings: SettingsType;
+  settings: Settings;
   projects?: Project[];
   teams?: Team[];
 };
@@ -200,6 +201,11 @@ export default function BusinessPage() {
     }
   }
 
+  function transferToSession(speaker: string, text: string) {
+    setHistory((h) => [...h, { speaker, text }]);
+    setTopic((prev) => prev || speaker);
+  }
+
   if (!roster) {
     return (
       <div className="container mx-auto max-w-4xl px-6 py-10 text-sm text-[hsl(var(--fg-dim))]">
@@ -255,6 +261,8 @@ export default function BusinessPage() {
               />
 
               <SettingsCard tokenQS={tokenQS} settings={roster.settings} onSaved={load} />
+
+              <TranscriptPanel onTransfer={transferToSession} />
 
               <DispatchQueueCard tokenQS={tokenQS} />
             </div>
