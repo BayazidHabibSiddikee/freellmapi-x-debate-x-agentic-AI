@@ -136,53 +136,61 @@ def step_3_marketing_hook(iteration: int, story_file: Path) -> Path:
 # ── Step 4: Generate Images ─────────────────────────────────────────────────
 
 def step_4_generate_images(iteration: int, hook_data: dict) -> Path:
-    """Generate scene video clips via MoneyPrinterTurbo CLI with Pexels stock footage."""
-    log(f"Iter {iteration}: Generating video clips")
+    """Generate AI scene images from story descriptions — contextual to the story, not stock footage."""
+    log(f"Iter {iteration}: Generating AI scene images")
     img_dir = IMAGES_DIR / f"iter_{iteration:02d}"
     img_dir.mkdir(exist_ok=True)
 
-    import subprocess
+    scene_images = sorted(img_dir.glob("scene_*.jpg")) + sorted(img_dir.glob("scene_*.png"))
+    if len(scene_images) >= 5:
+        log(f"  AI images exist: {len(scene_images)} files")
+        return img_dir
 
-    subject = f"Izuku Midoriya war survival: {hook_data.get('title', f'chapter {iteration}')}"
-    task_dir = OUTPUT_DIR / f"task_{iteration:02d}"
-    task_dir.mkdir(exist_ok=True)
+    # Generate scene descriptions from the story chapter
+    chapter_file = STORIES_DIR / f"chapter_{iteration:02d}.md"
+    chapter_text = chapter_file.read_text() if chapter_file.exists() else ""
 
-    cmd = [
-        sys.executable,
-        str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
-        "--video-subject", subject,
-        "--video-source", "pexels",
-        "--video-count", "1",
-        "--stop-at", "materials",
-        "--video-aspect", "9:16",
-    ]
+    paragraphs = [p.strip() for p in chapter_text.split("\n\n") if p.strip() and not p.strip().startswith("#") and not p.strip().startswith("[")]
+    scene_prompts = []
+    for p in paragraphs[:5]:
+        prompt = f"cinematic anime style, {p[:200]}, dramatic lighting, epic composition, 4k quality"
+        scene_prompts.append(prompt)
 
-    log(f"  Running MoneyPrinterTurbo: {subject[:60]}...")
-    try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=120,
-            cwd=str(Path("/home/sword/Documents/MoneyPrinterTurbo")),
-        )
-        if result.returncode == 0:
-            # Parse JSON output for material paths
-            for line in reversed(result.stdout.strip().split("\n")):
-                try:
-                    data = json.loads(line)
-                    materials = data.get("result", {}).get("materials", [])
-                    for j, mat in enumerate(materials):
-                        dest = img_dir / f"clip_{j+1:02d}.mp4"
-                        shutil.copy2(mat, dest)
-                    log(f"  Downloaded {len(materials)} video clips")
-                    break
-                except (json.JSONDecodeError, KeyError):
-                    continue
-        else:
-            log(f"  CLI error (code {result.returncode}): {result.stderr[:200]}")
-    except subprocess.TimeoutExpired:
-        log("  CLI timed out after 120s")
-    except Exception as e:
-        log(f"  Error: {e}")
+    if not scene_prompts:
+        scene_prompts = [
+            f"cinematic anime, {hook_data.get('title', 'war survivor')}, epic dramatic scene",
+            "military medic saving wounded soldier, anime style, dramatic lighting",
+            "young hero in battlefield ruins, anime, cinematic composition",
+            "soldiers running through smoke and fire, anime style, action scene",
+            "hero standing victorious on battlefield, anime, epic pose",
+        ]
 
+    import urllib.request
+    import urllib.parse
+
+    for j, prompt in enumerate(scene_prompts[:5]):
+        scene_img = img_dir / f"scene_{j+1:02d}.jpg"
+        if scene_img.exists():
+            continue
+
+        encoded = urllib.parse.quote(prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=1080&height=1920&seed={j + iteration * 10}&nologo=true"
+        log(f"  Generating scene {j+1}: {prompt[:60]}...")
+
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                scene_img.write_bytes(resp.read())
+            if scene_img.exists() and scene_img.stat().st_size > 5000:
+                log(f"  Scene {j+1} OK: {scene_img.stat().st_size // 1024}KB")
+            else:
+                log(f"  Scene {j+1} too small, retrying...")
+                scene_img.unlink(missing_ok=True)
+        except Exception as e:
+            log(f"  Scene {j+1} failed: {e}")
+
+    scene_images = sorted(img_dir.glob("scene_*.jpg")) + sorted(img_dir.glob("scene_*.png"))
+    log(f"  Generated {len(scene_images)} AI scene images")
     return img_dir
 
 
@@ -268,49 +276,10 @@ def step_6_assemble_video(iteration: int, img_dir: Path, voice_file: Path, hook_
 
     import subprocess
 
-    # Step A: Get Pexels images (not video clips) for scene backgrounds
+    # Step A: Get AI-generated scene images
     scene_images = sorted(img_dir.glob("scene_*.jpg")) + sorted(img_dir.glob("scene_*.png"))
     if not scene_images:
-        subject = f"Izuku Midoriya war survival: {hook_data.get('title', f'chapter {iteration}')}"
-        log(f"  Fetching images: {subject[:60]}...")
-
-        # Use MoneyPrinterTurbo to search Pexels for images
-        cmd_fetch = [
-            sys.executable,
-            str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
-            "--video-subject", subject,
-            "--video-source", "pexels",
-            "--video-count", "1",
-            "--stop-at", "materials",
-            "--video-aspect", "9:16",
-        ]
-        try:
-            result = subprocess.run(
-                cmd_fetch, capture_output=True, text=True, timeout=120,
-                cwd=str(Path("/home/sword/Documents/MoneyPrinterTurbo")),
-            )
-            if result.returncode == 0:
-                for line in reversed(result.stdout.strip().split("\n")):
-                    try:
-                        data = json.loads(line)
-                        materials = data.get("result", {}).get("materials", [])
-                        # Extract frames from video clips as scene images
-                        for j, mat in enumerate(materials[:5]):
-                            scene_img = img_dir / f"scene_{j+1:02d}.jpg"
-                            subprocess.run(
-                                ["ffmpeg", "-y", "-i", mat, "-vf", "select=eq(n\\,0)", "-vframes", "1", str(scene_img)],
-                                capture_output=True, timeout=30,
-                            )
-                        scene_images = sorted(img_dir.glob("scene_*.jpg"))
-                        log(f"  Extracted {len(scene_images)} scene images from Pexels clips")
-                        break
-                    except (json.JSONDecodeError, KeyError):
-                        continue
-        except Exception as e:
-            log(f"  Image fetch failed: {e}")
-
-    if not scene_images:
-        log("  No scene images available")
+        log("  No scene images available — run step_4 first")
         output_file.write_text(f"[No images for chapter {iteration}]")
         return output_file
 
