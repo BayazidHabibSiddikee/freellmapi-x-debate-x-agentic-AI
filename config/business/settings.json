@@ -1,7 +1,7 @@
 {
   "model": "auto",
   "temperature": 0.7,
-  "max_tokens": 500,
+  "max_tokens": 2950,
   "history_turns": 6,
   "rag_k": 6,
   "use_rag": true,
@@ -9,7 +9,7 @@
   "dispatch_timeout_seconds": 900,
   "allow_file_writes": false,
   "auto_review": true,
-  "active_project": "proj_app001",
+  "active_project": "proj_mtahnjahxql2",
   "dispatch_max_retries": 1,
   "team_review": true,
   "dispatch_max_parallel": 2,
