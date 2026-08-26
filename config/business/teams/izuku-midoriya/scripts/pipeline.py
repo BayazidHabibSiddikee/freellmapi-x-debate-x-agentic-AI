@@ -258,8 +258,8 @@ def step_5_generate_voices(iteration: int, story_file: Path) -> Path:
 # ── Step 6: Assemble Video ──────────────────────────────────────────────────
 
 def step_6_assemble_video(iteration: int, img_dir: Path, voice_file: Path, hook_data: dict) -> Path:
-    """Assemble video: MoneyPrinterTurbo clips + Piper audio + Ken Burns via ffmpeg."""
-    log(f"Iter {iteration}: Assembling video")
+    """Assemble video using DramaClaw: scene images + Piper audio + Ken Burns + title/end cards."""
+    log(f"Iter {iteration}: Assembling video (DramaClaw)")
     output_file = OUTPUT_DIR / f"izuku_chapter_{iteration:02d}.mp4"
 
     if output_file.exists() and output_file.stat().st_size > 100000:
@@ -268,92 +268,126 @@ def step_6_assemble_video(iteration: int, img_dir: Path, voice_file: Path, hook_
 
     import subprocess
 
-    # Step A: Get video clips from MoneyPrinterTurbo
-    clip_files = sorted(img_dir.glob("clip_*.mp4"))
-    combined_video = OUTPUT_DIR / f"combined_{iteration:02d}.mp4"
-
-    if not clip_files or not combined_video.exists():
+    # Step A: Get Pexels images (not video clips) for scene backgrounds
+    scene_images = sorted(img_dir.glob("scene_*.jpg")) + sorted(img_dir.glob("scene_*.png"))
+    if not scene_images:
         subject = f"Izuku Midoriya war survival: {hook_data.get('title', f'chapter {iteration}')}"
-        log(f"  Fetching clips: {subject[:60]}...")
+        log(f"  Fetching images: {subject[:60]}...")
 
-        if not clip_files:
-            # Fetch from Pexels
-            cmd_fetch = [
-                sys.executable,
-                str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
-                "--video-subject", subject,
-                "--video-source", "pexels",
-                "--video-count", "1",
-                "--stop-at", "materials",
-                "--video-aspect", "9:16",
-            ]
-            try:
-                result = subprocess.run(
-                    cmd_fetch, capture_output=True, text=True, timeout=120,
-                    cwd=str(Path("/home/sword/Documents/MoneyPrinterTurbo")),
-                )
-                if result.returncode == 0:
-                    for line in reversed(result.stdout.strip().split("\n")):
-                        try:
-                            data = json.loads(line)
-                            materials = data.get("result", {}).get("materials", [])
-                            for j, mat in enumerate(materials):
-                                shutil.copy2(mat, img_dir / f"clip_{j+1:02d}.mp4")
-                            clip_files = sorted(img_dir.glob("clip_*.mp4"))
-                            log(f"  Downloaded {len(clip_files)} clips")
-                            break
-                        except (json.JSONDecodeError, KeyError):
-                            continue
-            except Exception as e:
-                log(f"  Clip fetch failed: {e}")
+        # Use MoneyPrinterTurbo to search Pexels for images
+        cmd_fetch = [
+            sys.executable,
+            str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
+            "--video-subject", subject,
+            "--video-source", "pexels",
+            "--video-count", "1",
+            "--stop-at", "materials",
+            "--video-aspect", "9:16",
+        ]
+        try:
+            result = subprocess.run(
+                cmd_fetch, capture_output=True, text=True, timeout=120,
+                cwd=str(Path("/home/sword/Documents/MoneyPrinterTurbo")),
+            )
+            if result.returncode == 0:
+                for line in reversed(result.stdout.strip().split("\n")):
+                    try:
+                        data = json.loads(line)
+                        materials = data.get("result", {}).get("materials", [])
+                        # Extract frames from video clips as scene images
+                        for j, mat in enumerate(materials[:5]):
+                            scene_img = img_dir / f"scene_{j+1:02d}.jpg"
+                            subprocess.run(
+                                ["ffmpeg", "-y", "-i", mat, "-vf", "select=eq(n\\,0)", "-vframes", "1", str(scene_img)],
+                                capture_output=True, timeout=30,
+                            )
+                        scene_images = sorted(img_dir.glob("scene_*.jpg"))
+                        log(f"  Extracted {len(scene_images)} scene images from Pexels clips")
+                        break
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+        except Exception as e:
+            log(f"  Image fetch failed: {e}")
 
-        # Concatenate clips
+    if not scene_images:
+        log("  No scene images available")
+        output_file.write_text(f"[No images for chapter {iteration}]")
+        return output_file
+
+    # Step B: Split Piper audio into scene segments
+    story_file = STORIES_DIR / f"chapter_{iteration:02d}.md"
+    story_text = story_file.read_text() if story_file.exists() else ""
+    paragraphs = [p.strip() for p in story_text.split("\n\n") if p.strip() and not p.strip().startswith("#") and not p.strip().startswith("[")]
+    if not paragraphs:
+        paragraphs = [story_text[:500]]
+
+    # Get audio duration
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(voice_file)],
+        capture_output=True, text=True,
+    )
+    total_duration = float(probe.stdout.strip() or "60")
+    segment_duration = total_duration / max(len(paragraphs), len(scene_images))
+
+    # Split audio into segments
+    audio_segments = []
+    for j in range(len(scene_images)):
+        seg_file = img_dir / f"audio_{j+1:02d}.wav"
+        start = j * segment_duration
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(voice_file), "-ss", str(start), "-t", str(segment_duration), str(seg_file)],
+            capture_output=True, timeout=30,
+        )
+        audio_segments.append(seg_file)
+
+    # Step C: Use DramaClaw's Ken Burns + scene composition
+    sys.path.insert(0, "/home/sword/freellmapi-x-debate-x-agentic-AI/config/business/teams/izuku-midoriya/scripts")
+    from dramaclaw_video import assemble_episode, KenBurnsEffect
+
+    scenes = []
+    for j in range(len(scene_images)):
+        audio_file = audio_segments[j] if j < len(audio_segments) else audio_segments[0]
+        if audio_file.exists():
+            scenes.append({
+                "image_path": str(scene_images[j]),
+                "audio_path": str(audio_file),
+                "duration_seconds": segment_duration,
+                "narration_text": paragraphs[j] if j < len(paragraphs) else "",
+            })
+
+    if not scenes:
+        log("  No scenes to assemble")
+        output_file.write_text(f"[No scenes for chapter {iteration}]")
+        return output_file
+
+    log(f"  Assembling {len(scenes)} scenes with Ken Burns effects...")
+    title = hook_data.get("title", f"Chapter {iteration}")
+
+    success = assemble_episode(
+        scenes=scenes,
+        output_path=str(output_file),
+        title=title,
+        add_title_card=True,
+        add_end_card=True,
+        width=1080,
+        height=1920,
+    )
+
+    if success and output_file.exists() and output_file.stat().st_size > 100000:
+        log(f"  Video assembled: {output_file.name} ({output_file.stat().st_size // 1024}KB)")
+    else:
+        log("  DramaClaw assembly failed, falling back to simple concat")
+        # Fallback: simple concat of Pexels clips + Piper audio
+        clip_files = sorted(img_dir.glob("clip_*.mp4"))
         if clip_files:
             concat_file = OUTPUT_DIR / f"concat_{iteration:02d}.txt"
             concat_file.write_text("\n".join(f"file '{f}'" for f in clip_files))
             subprocess.run(
                 ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
-                 "-c", "copy", str(combined_video)],
+                 "-c", "copy", str(output_file)],
                 capture_output=True, timeout=60,
             )
-            log(f"  Combined {len(clip_files)} clips")
 
-    if not combined_video.exists():
-        log("  No video clips available")
-        output_file.write_text(f"[No clips for chapter {iteration}]")
-        return output_file
-
-    # Step B: Merge Piper audio + video with Ken Burns zoom
-    has_audio = voice_file.exists() and voice_file.suffix == ".wav" and voice_file.stat().st_size > 1000
-
-    if has_audio:
-        log(f"  Merging Piper audio + Ken Burns zoom...")
-        try:
-            subprocess.run(
-                ["ffmpeg", "-y",
-                 "-i", str(combined_video),
-                 "-i", str(voice_file),
-                 "-filter_complex",
-                 "[0:v]zoompan=z='min(zoom+0.001,1.5)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[v]",
-                 "-map", "[v]", "-map", "1:a",
-                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                 "-c:a", "aac", "-b:a", "128k",
-                 "-shortest",
-                 str(output_file)],
-                capture_output=True, timeout=300,
-            )
-            if output_file.exists() and output_file.stat().st_size > 100000:
-                log(f"  Video assembled: {output_file.name} ({output_file.stat().st_size // 1024}KB)")
-                return output_file
-        except Exception as e:
-            log(f"  ffmpeg merge failed: {e}")
-    else:
-        # No Piper audio — just copy combined video
-        shutil.copy2(combined_video, output_file)
-        log(f"  Video assembled (no custom audio): {output_file.name}")
-        return output_file
-
-    output_file.write_text(f"[Video assembly failed for chapter {iteration}]")
     return output_file
 
 
