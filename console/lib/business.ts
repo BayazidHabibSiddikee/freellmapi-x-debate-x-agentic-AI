@@ -419,6 +419,15 @@ export function activeProject(): Project | null {
 
 export type TeamRole = "lead" | "pm" | "engineer" | "researcher" | "judge";
 
+export type DailyCycle = {
+  enabled: boolean;
+  iterations: number;
+  schedule: string;
+  branch_strategy: string;
+  auto_commit: boolean;
+  requires_review_panel: boolean;
+};
+
 export type Team = {
   id: string;
   name: string;
@@ -428,6 +437,7 @@ export type Team = {
   skills?: string[];
   wiki_page?: string;
   transcript_dir?: string;
+  daily_cycle?: DailyCycle;
 };
 
 export type TopJudge = {

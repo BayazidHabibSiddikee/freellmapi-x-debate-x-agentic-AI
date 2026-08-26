@@ -9,12 +9,19 @@
         "lead": ["nova_vance"],
         "pm": ["sterling_cole"],
         "engineer": ["linus_wolf", "grace_kim"],
-        "researcher": ["atlas_grey"],
-        "judge": ["solomon_hart"]
+        "researcher": ["atlas_grey"]
       },
       "skills": ["backend-architecture", "api-design"],
       "wiki_page": "wiki/platform-team",
-      "transcript_dir": "~/swordoffice/transcripts/platform"
+      "transcript_dir": "~/swordoffice/transcripts/platform",
+      "daily_cycle": {
+        "enabled": true,
+        "iterations": 12,
+        "schedule": "09:00",
+        "branch_strategy": "feature/platform-{date}",
+        "auto_commit": false,
+        "requires_review_panel": true
+      }
     },
     {
       "id": "frontend",
@@ -25,12 +32,19 @@
         "lead": ["yuki_tanaka"],
         "pm": ["sterling_cole"],
         "engineer": ["dev_okafor", "sofia_alvarez"],
-        "researcher": ["iris_lund"],
-        "judge": ["solomon_hart"]
+        "researcher": ["iris_lund"]
       },
       "skills": ["react-patterns", "ui-design", "flutter-patterns"],
       "wiki_page": "wiki/frontend-team",
-      "transcript_dir": "~/swordoffice/transcripts/frontend"
+      "transcript_dir": "~/swordoffice/transcripts/frontend",
+      "daily_cycle": {
+        "enabled": true,
+        "iterations": 12,
+        "schedule": "09:00",
+        "branch_strategy": "feature/frontend-{date}",
+        "auto_commit": false,
+        "requires_review_panel": true
+      }
     },
     {
       "id": "data_ml",
@@ -41,12 +55,19 @@
         "lead": ["ada_chen"],
         "pm": ["marcus_reed"],
         "engineer": ["kai_nakamura", "ravi_patel"],
-        "researcher": ["omar_farouk"],
-        "judge": ["solomon_hart"]
+        "researcher": ["omar_farouk"]
       },
       "skills": ["ml-engineering", "data-pipelines"],
       "wiki_page": "wiki/data-ml-team",
-      "transcript_dir": "~/swordoffice/transcripts/data-ml"
+      "transcript_dir": "~/swordoffice/transcripts/data-ml",
+      "daily_cycle": {
+        "enabled": true,
+        "iterations": 12,
+        "schedule": "09:00",
+        "branch_strategy": "feature/data_ml-{date}",
+        "auto_commit": false,
+        "requires_review_panel": true
+      }
     },
     {
       "id": "devops_sre",
@@ -57,12 +78,19 @@
         "lead": ["kai_nakamura"],
         "pm": ["priya_sharma"],
         "engineer": ["ravi_patel", "zoe_martin"],
-        "researcher": ["atlas_grey"],
-        "judge": ["solomon_hart"]
+        "researcher": ["atlas_grey"]
       },
       "skills": ["infrastructure", "deployment", "docker-patterns"],
       "wiki_page": "wiki/devops-team",
-      "transcript_dir": "~/swordoffice/transcripts/devops"
+      "transcript_dir": "~/swordoffice/transcripts/devops",
+      "daily_cycle": {
+        "enabled": true,
+        "iterations": 12,
+        "schedule": "09:00",
+        "branch_strategy": "feature/devops_sre-{date}",
+        "auto_commit": false,
+        "requires_review_panel": true
+      }
     },
     {
       "id": "qa_security",
@@ -73,12 +101,19 @@
         "lead": ["zoe_martin"],
         "pm": ["tom_becker"],
         "engineer": ["ravi_patel", "kai_nakamura"],
-        "researcher": ["vera_kline"],
-        "judge": ["solomon_hart"]
+        "researcher": ["vera_kline"]
       },
       "skills": ["security-audit", "testing", "e2e-testing"],
       "wiki_page": "wiki/qa-security-team",
-      "transcript_dir": "~/swordoffice/transcripts/qa-security"
+      "transcript_dir": "~/swordoffice/transcripts/qa-security",
+      "daily_cycle": {
+        "enabled": true,
+        "iterations": 12,
+        "schedule": "09:00",
+        "branch_strategy": "feature/qa_security-{date}",
+        "auto_commit": false,
+        "requires_review_panel": true
+      }
     },
     {
       "id": "research",
@@ -89,12 +124,19 @@
         "lead": ["atlas_grey"],
         "pm": ["theo_planner"],
         "engineer": ["iris_lund", "omar_farouk"],
-        "researcher": ["ghost_-_the_bug"],
-        "judge": ["solomon_hart"]
+        "researcher": ["ghost_-__the_bug"]
       },
       "skills": ["deep-research", "market-intelligence", "literature-review"],
       "wiki_page": "wiki/research-team",
-      "transcript_dir": "~/swordoffice/transcripts/research"
+      "transcript_dir": "~/swordoffice/transcripts/research",
+      "daily_cycle": {
+        "enabled": true,
+        "iterations": 12,
+        "schedule": "09:00",
+        "branch_strategy": "feature/research-{date}",
+        "auto_commit": false,
+        "requires_review_panel": true
+      }
     },
     {
       "id": "growth_ops",
@@ -105,12 +147,19 @@
         "lead": ["makima"],
         "pm": ["priya_sharma"],
         "engineer": ["dev_okafor", "openclaw"],
-        "researcher": ["echo"],
-        "judge": ["solomon_hart"]
+        "researcher": ["echo"]
       },
       "skills": ["growth-engineering", "operations", "content-engine"],
       "wiki_page": "wiki/growth-ops-team",
-      "transcript_dir": "~/swordoffice/transcripts/growth-ops"
+      "transcript_dir": "~/swordoffice/transcripts/growth-ops",
+      "daily_cycle": {
+        "enabled": true,
+        "iterations": 12,
+        "schedule": "09:00",
+        "branch_strategy": "feature/growth_ops-{date}",
+        "auto_commit": false,
+        "requires_review_panel": true
+      }
     }
   ],
   "orchestrator": {
