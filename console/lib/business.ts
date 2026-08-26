@@ -343,6 +343,7 @@ export type Project = {
 
 const PROJECTS_PATH =
   process.env.BUSINESS_PROJECTS_PATH ?? join(CONFIG_DIR, "projects.json");
+const TEAMS_PATH = join(CONFIG_DIR, "teams.json");
 
 export function getProjects(): Project[] {
   if (!existsSync(PROJECTS_PATH)) return [];
@@ -412,6 +413,76 @@ export function deleteProject(id: string): boolean {
 export function activeProject(): Project | null {
   const id = getSettings().active_project;
   return id ? getProject(id) : null;
+}
+
+// ── Teams (multi-team orchestration) ──────────────────────────────────────────
+
+export type TeamRole = "lead" | "pm" | "engineer" | "researcher" | "judge";
+
+export type Team = {
+  id: string;
+  name: string;
+  workspace: string;
+  selection_mode: "round_robin" | "random" | "manual";
+  roles: Record<TeamRole, string[]>;
+  skills?: string[];
+  transcript_dir?: string;
+};
+
+export type Orchestrator = {
+  character: string;
+  mode: "fan_out_fan_in" | "sequential" | "parallel";
+  team_selection: "all" | "subset" | "single";
+  description?: string;
+};
+
+export type TeamsConfig = {
+  teams: Team[];
+  orchestrator: Orchestrator;
+};
+
+export function getTeamsConfig(): TeamsConfig {
+  if (!existsSync(TEAMS_PATH)) {
+    return { teams: [], orchestrator: { character: "general_vector", mode: "fan_out_fan_in", team_selection: "all" } };
+  }
+  try {
+    return JSON.parse(readFileSync(TEAMS_PATH, "utf8"));
+  } catch {
+    return { teams: [], orchestrator: { character: "general_vector", mode: "fan_out_fan_in", team_selection: "all" } };
+  }
+}
+
+export function saveTeamsConfig(config: TeamsConfig): void {
+  ensureConfigDir();
+  writeFileSync(TEAMS_PATH, JSON.stringify(config, null, 2));
+}
+
+export function getTeam(id: string): Team | null {
+  return getTeamsConfig().teams.find((t) => t.id === id) ?? null;
+}
+
+export function getTeamMembers(team: Team): string[] {
+  const all = new Set<string>();
+  for (const members of Object.values(team.roles)) {
+    for (const id of members) all.add(id);
+  }
+  return [...all];
+}
+
+export function getOrchestrator(): Orchestrator {
+  return getTeamsConfig().orchestrator;
+}
+
+/** Select the next character for a team role using the team's selection mode. */
+export function selectNextCharacter(team: Team, role: TeamRole): string | null {
+  const members = team.roles[role];
+  if (!members.length) return null;
+  if (team.selection_mode === "random") {
+    return members[Math.floor(Math.random() * members.length)];
+  }
+  // round_robin: use a simple counter based on timestamp
+  const idx = Math.floor(Date.now() / 1000) % members.length;
+  return members[idx];
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────

@@ -1,79 +1,115 @@
 {
-  "version": 1,
-  "active_team_id": "main",
   "teams": [
     {
-      "id": "main",
-      "name": "Main Team",
-      "description": "Default team — migrated from global config",
-      "color": "#6366f1",
-      "created_at": "2026-08-24T00:00:00Z",
+      "id": "platform",
+      "name": "Platform & Backend",
+      "workspace": "~/freellmapi-x-debate-x-agentic-AI/services",
+      "selection_mode": "round_robin",
       "roles": {
-        "Director": {
-          "members": [
-            "general_vector"
-          ],
-          "workspace": null
-        },
-        "Marketing": {
-          "members": [
-            "Makima",
-            "openclaw"
-          ],
-          "workspace": null
-        },
-        "CTO": {
-          "members": [
-            "Admiral_Statura"
-          ],
-          "workspace": null
-        },
-        "PM": {
-          "members": [],
-          "workspace": null
-        },
-        "Judge": {
-          "members": [],
-          "workspace": null
-        },
-        "Researcher": {
-          "members": [
-            "Ghost_-_The_bug"
-          ],
-          "workspace": null
-        },
-        "Engineer": {
-          "members": [
-            "linus_wolf",
-            "grace_kim"
-          ],
-          "workspace": "/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate"
-        },
-        "Analyst": {
-          "members": [],
-          "workspace": null
-        },
-        "DevOps": {
-          "members": [
-            "hermes"
-          ],
-          "workspace": null
-        }
+        "lead": ["nova_vance"],
+        "pm": ["sterling_cole"],
+        "engineer": ["linus_wolf", "grace_kim"],
+        "researcher": ["atlas_grey"],
+        "judge": ["solomon_hart"]
       },
-      "projects": [],
-      "settings": {
-        "model": "auto",
-        "temperature": 0.7,
-        "max_tokens": 500,
-        "history_turns": 6,
-        "rag_k": 6,
-        "use_rag": true,
-        "dispatch_agent_default": "claude",
-        "dispatch_timeout_seconds": 900,
-        "allow_file_writes": false,
-        "active_project": null
+      "skills": ["backend-architecture", "api-design"],
+      "transcript_dir": "~/swordoffice/transcripts/platform"
+    },
+    {
+      "id": "frontend",
+      "name": "Frontend & Mobile",
+      "workspace": "~/freellmapi-x-debate-x-agentic-AI/console",
+      "selection_mode": "round_robin",
+      "roles": {
+        "lead": ["yuki_tanaka"],
+        "pm": ["sterling_cole"],
+        "engineer": ["dev_okafor", "sofia_alvarez"],
+        "researcher": ["iris_lund"],
+        "judge": ["solomon_hart"]
       },
-      "persona_overrides": {}
+      "skills": ["react-patterns", "ui-design"],
+      "transcript_dir": "~/swordoffice/transcripts/frontend"
+    },
+    {
+      "id": "data_ml",
+      "name": "Data & ML",
+      "workspace": "~/freellmapi-x-debate-x-agentic-AI/services/agent",
+      "selection_mode": "round_robin",
+      "roles": {
+        "lead": ["ada_chen"],
+        "pm": ["marcus_reed"],
+        "engineer": ["kai_nakamura", "ravi_patel"],
+        "researcher": ["omar_farouk"],
+        "judge": ["solomon_hart"]
+      },
+      "skills": ["ml-engineering", "data-pipelines"],
+      "transcript_dir": "~/swordoffice/transcripts/data-ml"
+    },
+    {
+      "id": "devops_sre",
+      "name": "DevOps & SRE",
+      "workspace": "~/freellmapi-x-debate-x-agentic-AI",
+      "selection_mode": "round_robin",
+      "roles": {
+        "lead": ["kai_nakamura"],
+        "pm": ["priya_sharma"],
+        "engineer": ["ravi_patel", "zoe_martin"],
+        "researcher": ["atlas_grey"],
+        "judge": ["solomon_hart"]
+      },
+      "skills": ["infrastructure", "deployment"],
+      "transcript_dir": "~/swordoffice/transcripts/devops"
+    },
+    {
+      "id": "qa_security",
+      "name": "QA & Security",
+      "workspace": "~/freellmapi-x-debate-x-agentic-AI",
+      "selection_mode": "round_robin",
+      "roles": {
+        "lead": ["zoe_martin"],
+        "pm": ["tom_becker"],
+        "engineer": ["ravi_patel", "kai_nakamura"],
+        "researcher": ["vera_kline"],
+        "judge": ["solomon_hart"]
+      },
+      "skills": ["security-audit", "testing"],
+      "transcript_dir": "~/swordoffice/transcripts/qa-security"
+    },
+    {
+      "id": "research",
+      "name": "Research & Analysis",
+      "workspace": "~/freellmapi-x-debate-x-agentic-AI/projects/research",
+      "selection_mode": "round_robin",
+      "roles": {
+        "lead": ["atlas_grey"],
+        "pm": ["theo_planner"],
+        "engineer": ["iris_lund", "omar_farouk"],
+        "researcher": ["ghost_-_the_bug"],
+        "judge": ["solomon_hart"]
+      },
+      "skills": ["deep-research", "market-intelligence"],
+      "transcript_dir": "~/swordoffice/transcripts/research"
+    },
+    {
+      "id": "growth_ops",
+      "name": "Growth & Ops",
+      "workspace": "~/freellmapi-x-debate-x-agentic-AI",
+      "selection_mode": "round_robin",
+      "roles": {
+        "lead": ["makima"],
+        "pm": ["priya_sharma"],
+        "engineer": ["dev_okafor", "openclaw"],
+        "researcher": ["echo"],
+        "judge": ["solomon_hart"]
+      },
+      "skills": ["growth-engineering", "operations"],
+      "transcript_dir": "~/swordoffice/transcripts/growth-ops"
     }
-  ]
+  ],
+  "orchestrator": {
+    "character": "general_vector",
+    "mode": "fan_out_fan_in",
+    "team_selection": "all",
+    "description": "Routes goals to appropriate teams, collects specs, and merges into master dispatch"
+  }
 }
