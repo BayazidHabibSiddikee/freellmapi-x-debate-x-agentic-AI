@@ -418,7 +418,7 @@
   },30000);
 })();
 </script>
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeAllPanels()"></div>
     
     <!-- Character Selection Sidebar -->
     <div class="sidebar" id="sidebar">
@@ -578,7 +578,12 @@
 
         function toggleHistory() {
             document.getElementById('historyPanel').classList.toggle('open');
-            updateHistoryList();
+        }
+
+        function closeAllPanels() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('open');
+            document.getElementById('historyPanel').classList.remove('open');
         }
 
         async function loadCharacters() {
