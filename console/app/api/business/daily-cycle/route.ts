@@ -7,6 +7,10 @@ import { join } from "node:path";
 import { execSync } from "node:child_process";
 
 const LLM_BASE = process.env.FREELLM_API_BASE ?? process.env.OPENAI_API_BASE ?? "http://127.0.0.1:3001/v1";
+const MAX_LLM_RETRIES = 3;
+const LLM_RETRY_BASE_MS = 1000;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function freellmKey(): string {
   if (process.env.FREELLM_API_KEY) return process.env.FREELLM_API_KEY;
@@ -34,6 +38,98 @@ function isTeamIncludedInProject(teamId: string, project: { included_teams?: str
   return false;
 }
 
+/** Retryable LLM call with exponential backoff. Returns null on permanent failure. */
+async function callLLM(messages: Array<{ role: string; content: string }>, opts: {
+  max_tokens?: number;
+  temperature?: number;
+  model?: string;
+  timeout_ms?: number;
+}): Promise<string | null> {
+  const { max_tokens = 800, temperature = 0.6, model = "auto", timeout_ms = 30_000 } = opts;
+  for (let attempt = 1; attempt <= MAX_LLM_RETRIES; attempt++) {
+    try {
+      const res = await fetch(`${LLM_BASE}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${freellmKey()}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature,
+          max_tokens,
+        }),
+        signal: AbortSignal.timeout(timeout_ms),
+      });
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+      }
+      const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+      return data.choices?.[0]?.message?.content?.trim() ?? null;
+    } catch (e) {
+      const isLast = attempt === MAX_LLM_RETRIES;
+      if (isLast) {
+        console.error(`[daily-cycle] LLM call failed after ${MAX_LLM_RETRIES} attempts:`, String(e).slice(0, 200));
+        return null;
+      }
+      // Exponential backoff before retry
+      const ms = LLM_RETRY_BASE_MS * 2 ** (attempt - 1);
+      console.warn(`[daily-cycle] LLM call failed (attempt ${attempt}/${MAX_LLM_RETRIES}), retrying in ${ms}ms:`, String(e).slice(0, 100));
+      await new Promise(r => setTimeout(r, ms));
+    }
+  }
+  return null;
+}
+
+/** Parse structured output from leader's distillation turn. */
+function parseLeaderOutput(raw: string): {
+  summary: string;
+  action_items: string[];
+  flagged: string[];
+} {
+  const summaryMatch = raw.match(/SUMMARY:\s*([\s\S]*?)(?=ACTION_ITEMS:|$)/);
+  const actionsMatch = raw.match(/ACTION_ITEMS:\s*([\s\S]*?)(?=FLAGGED:|$)/);
+  const flaggedMatch = raw.match(/FLAGGED:\s*([\s\S]*?)$/);
+
+  return {
+    summary: summaryMatch?.[1]?.trim() ?? raw.slice(0, 400),
+    action_items: (actionsMatch?.[1] ?? "")
+      .split("\n")
+      .map(l => l.replace(/^[-*•]\s*/, "").trim())
+      .filter(Boolean),
+    flagged: (flaggedMatch?.[1] ?? "")
+      .split("\n")
+      .map(l => l.replace(/^[-*•]\s*/, "").trim())
+      .filter(l => l && l.toLowerCase() !== "none"),
+  };
+}
+
+/** Detect escalation beyond keyword matching — size-based heuristics. */
+function detectSizeEscalation(turns: string[]): string[] {
+  const flags: string[] = [];
+  let totalAddedLines = 0;
+  let newFileCount = 0;
+
+  for (const turn of turns) {
+    // Count lines mentioning additions/changes
+    const adds = (turn.match(/\+\+\+/g) ?? []).length;         // diff headers
+    const added = (turn.match(/^\+[^+]/gm) ?? []).length;       // diff-added lines
+    totalAddedLines += adds + added;
+    // Count mentions of creating new files
+    const newFiles = (turn.match(/\bcreate\b.*\.(ts|tsx|py|js|go|rs)\b/gi) ?? []).length;
+    newFileCount += newFiles;
+  }
+
+  // Heuristic thresholds — tune per-project
+  if (totalAddedLines > 200) flags.push(`Large change: ~${totalAddedLines} lines of additions detected`);
+  if (newFileCount >= 3) flags.push(`New files: ${newFileCount} new source files proposed`);
+  if (flags.length === 0 && totalAddedLines > 100) flags.push(`Medium change: ~${totalAddedLines} lines`);
+
+  return flags;
+}
+
 /** Run the daily autonomous debate loop for a team. */
 async function runDailyCycle(team: Team, projectId?: string): Promise<{
   team_id: string;
@@ -58,6 +154,7 @@ async function runDailyCycle(team: Team, projectId?: string): Promise<{
   const memberNames = members.map(id => getCharacter(id)?.name ?? id).join(", ");
 
   const turns: string[] = [];
+  // Escalation detection: keywords + size heuristics
   const FLAGGED_KEYWORDS = ["cross-team", "cross team", "another team", "high-impact", "high impact", "escalate", "conflict"];
 
   // Run iterative debate
@@ -113,51 +210,52 @@ Review the discussion so far and ensure we're addressing requirements and priori
       role = "pm";
     }
 
-    const res = await fetch(`${LLM_BASE}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${freellmKey()}`,
-      },
-      body: JSON.stringify({
-        model: "auto",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Daily cycle turn ${i + 1}/${dailyCycle.iterations} for team ${team.name}` },
-        ],
-        temperature: 0.6,
-        max_tokens: 300,
-      }),
-      signal: AbortSignal.timeout(30_000),
-    });
+    const resText = await callLLM(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Daily cycle turn ${i + 1}/${dailyCycle.iterations} for team ${team.name}` },
+      ],
+      { max_tokens: isLastTurn ? 600 : 300, temperature: 0.6, timeout_ms: 45_000 },
+    );
 
     let text = `${charName} (${role}): [awaiting response]`;
-    if (res.ok) {
-      const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-      text = data.choices?.[0]?.message?.content?.trim() ?? text;
+    if (resText) {
+      text = resText;
+    } else {
+      // LLM permanently failed — note it but continue with partial data
+      text = `${charName} (${role}): [LLM unavailable after retries]`;
     }
 
     turns.push(`**${charName} (${role})**: ${text}`);
   }
 
-  // Parse leader's final summary for flagged items
+  // Parse leader's final distillation
   const lastTurn = turns[turns.length - 1];
-  const flaggedItems: string[] = [];
-  const summaryMatch = lastTurn.match(/SUMMARY:\s*(.+?)(?=ACTION_ITEMS:|$)/s);
-  const flaggedMatch = lastTurn.match(/FLAGGED:\s*(.+?)$/s);
+  const parsed = parseLeaderOutput(lastTurn);
 
-  const leaderSummary = summaryMatch?.[1]?.trim() ?? lastTurn;
-  if (flaggedMatch?.[1]?.trim() && flaggedMatch[1].trim().toLowerCase() !== "none") {
-    flaggedItems.push(flaggedMatch[1].trim());
-  }
-
-  // Check for escalation keywords
+  // Combine leader-flagged items + keyword scan + size heuristics
+  const flaggedItems: string[] = [...parsed.flagged];
   const allText = turns.join("\n").toLowerCase();
   for (const keyword of FLAGGED_KEYWORDS) {
     if (allText.includes(keyword) && !flaggedItems.some(f => f.toLowerCase().includes(keyword))) {
       flaggedItems.push(`Contains keyword: ${keyword}`);
     }
   }
+  // Size-based escalation (only when project has threshold set)
+  if (projectId) {
+    const project = getProject(projectId);
+    const threshold = project?.escalation_threshold;
+    if (threshold && threshold !== "never") {
+      const sizeFlags = detectSizeEscalation(turns);
+      for (const sf of sizeFlags) {
+        if (!flaggedItems.some(f => f.toLowerCase().includes(sf.slice(0, 20)))) {
+          flaggedItems.push(sf);
+        }
+      }
+    }
+  }
+
+  const leaderSummary = parsed.summary || lastTurn.slice(0, 600);
 
   // Write transcript
   const transcriptDir = team.transcript_dir ?? `~/swordoffice/transcripts/${team.id}`;
@@ -276,11 +374,11 @@ Be concise and decisive.`;
   return data.choices?.[0]?.message?.content?.trim() ?? "No recommendations";
 }
 
-/** Compose daily digest from team summaries. */
+/** Compose daily digest from team summaries, saved persistently. */
 async function composeDailyDigest(
   teamResults: Array<{ team_id: string; leader_summary: string; flagged_items: string[] }>,
-  roundTable?: string
-): Promise<string> {
+  roundTable?: string,
+): Promise<{ markdown: string; path: string }> {
   const date = new Date().toISOString().split("T")[0];
   const sections = teamResults.map(r => {
     const team = getTeam(r.team_id);
@@ -288,13 +386,25 @@ async function composeDailyDigest(
     return `### ${team?.name ?? r.team_id}\n${r.leader_summary}${flagSection}`;
   });
 
-  let digest = `# Daily Digest — ${date}\n\n${sections.join("\n\n")}`;
+  let content = `# Daily Digest — ${date}\n\n${sections.join("\n\n")}`;
 
   if (roundTable) {
-    digest += `\n\n---\n\n## Leadership Round Table\n${roundTable}`;
+    content += `\n\n---\n\n## Leadership Round Table\n${roundTable}`;
   }
 
-  return digest;
+  // Persist digest + optional round-table file
+  const digestDir = join(process.env.HOME ?? "/root", "swordoffice", "digests");
+  await mkdir(digestDir, { recursive: true });
+  const digestPath = join(digestDir, `digest-${date}.md`);
+  await writeFile(digestPath, content, "utf-8");
+
+  let roundTablePath: string | undefined;
+  if (roundTable) {
+    roundTablePath = join(digestDir, `round-table-${date}.md`);
+    await writeFile(roundTablePath, `# Leadership Round Table — ${date}\n\n${roundTable}`, "utf-8");
+  }
+
+  return { markdown: content, path: digestPath };
 }
 
 export async function POST(req: NextRequest) {
@@ -362,15 +472,8 @@ export async function POST(req: NextRequest) {
     roundTable = await runRoundTable(escalatedItems);
   }
 
-  // Compose daily digest
-  const digest = await composeDailyDigest(results, roundTable);
-
-  // Write digest to file
-  const digestDir = join(process.env.HOME ?? "/root", "swordoffice", "digests");
-  await mkdir(digestDir, { recursive: true });
-  const dateStr = new Date().toISOString().split("T")[0];
-  const digestPath = join(digestDir, `digest-${dateStr}.md`);
-  await writeFile(digestPath, digest, "utf-8");
+  // Compose and persist daily digest
+  const { markdown: digest, path: digestPath, roundTablePath } = await composeDailyDigest(results, roundTable);
 
   return NextResponse.json({
     ok: true,
