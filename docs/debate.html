@@ -129,13 +129,14 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            background: var(--bg-base);
+            background: var(--bg-surface);
             padding: 10px;
             border-radius: 10px;
             border: 1px solid var(--border-light);
             cursor: pointer;
             transition: all 0.2s;
             user-select: none;
+            color: var(--text-main);
         }
         .char-card:hover { border-color: var(--text-subtle); transform: translateX(3px); }
         .char-card input[type="checkbox"] { display: none; }
@@ -159,6 +160,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            color: var(--text-main);
         }
         .char-status {
             font-size: 0.7rem;
