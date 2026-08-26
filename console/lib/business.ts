@@ -339,6 +339,10 @@ export type Project = {
   folder: string;            // absolute path under $HOME
   assignments: ProjectAssignment[];
   created_at?: string;
+  /** Which teams participate in this project. "all" | [] (excludes all) | list of team ids. */
+  included_teams?: "all" | string[];
+  /** When set, items touching other teams' workspaces or exceeding this threshold escalate. */
+  escalation_threshold?: "never" | "cross_team" | "cross_team_or_flagged";
 };
 
 const PROJECTS_PATH =

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateToken } from "@/lib/auth";
 import { getTeamsConfig, getTeam, getTeamMembers, getCharacter, getSettings, type Team, type DailyCycle } from "@/lib/business";
+import { getProject } from "@/lib/business";
 import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
@@ -24,10 +25,11 @@ function freellmKey(): string {
 
 /** Check if team is included in a project. */
 function isTeamIncludedInProject(teamId: string, project: { included_teams?: string | string[] }): boolean {
-  if (!project.included_teams) return true; // default: included
-  if (project.included_teams === "all") return true;
-  if (Array.isArray(project.included_teams)) {
-    return project.included_teams.includes(teamId);
+  const inc = (project as Record<string, unknown>).included_teams;
+  if (!inc) return true; // default: included
+  if (inc === "all") return true;
+  if (Array.isArray(inc)) {
+    return inc.includes(teamId);
   }
   return false;
 }
@@ -233,7 +235,7 @@ async function runRoundTable(escalatedItems: Array<{ team_id: string; summary: s
   });
 
   const rosterText = leaders.map(l => `- ${l.leader} (${l.team})`).join("\n");
-  const itemsText = escalatedItems.map(item => `## ${item.team}\n${item.summary}\nFlagged: ${item.flagged.join(", ")}`).join("\n\n");
+  const itemsText = escalatedItems.map(item => `## ${item.team_id}\n${item.summary}\nFlagged: ${item.flagged.join(", ")}`).join("\n\n");
 
   const systemPrompt = `You are the Leadership Round Table — the 7 team leaders plus the user.
 
@@ -313,6 +315,10 @@ export async function POST(req: NextRequest) {
   // Determine which teams to run
   let teamsToRun: Team[] = [];
 
+  // Resolve the target project when a project_id is given — used to gate which
+  // teams may run. When no project is specified every enabled team runs (legacy).
+  const project = body.project_id ? getProject(body.project_id) : null;
+
   if (body.run_all) {
     teamsToRun = config.teams.filter(t => t.daily_cycle?.enabled);
   } else if (body.team_id) {
@@ -326,6 +332,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "team_id or run_all required" }, { status: 400 });
   }
 
+  // Gate: only run teams that are included in the target project
+  if (project) {
+    teamsToRun = teamsToRun.filter(t => isTeamIncludedInProject(t.id, project));
+    if (teamsToRun.length === 0) {
+      return NextResponse.json({
+        ok: false,
+        error: `no enabled teams included in project "${project.name}"`,
+        project_included_teams: project.included_teams,
+      }, { status: 400 });
+    }
+  }
+
   // Run daily cycles
   const results: Array<{ team_id: string; leader_summary: string; flagged_items: string[]; transcript: string; branch?: string; review_status?: string }> = [];
 
@@ -335,7 +353,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Check for escalated items
-  const escalatedItems = results.filter(r => r.flagged_items.length > 0);
+  const escalatedItems = results.map(r => ({ team_id: r.team_id, summary: r.leader_summary, flagged: r.flagged_items }))
+    .filter((item): item is { team_id: string; summary: string; flagged: string[] } => item.flagged.length > 0);
 
   // Run round table if there are escalated items
   let roundTable: string | undefined;
