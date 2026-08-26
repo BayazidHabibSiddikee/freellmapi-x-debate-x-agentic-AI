@@ -14,6 +14,7 @@ import { ProjectsCard, type Project } from "./projects-card";
 import { LogsCard } from "./logs-card";
 import { SettingsCard, type Settings } from "./settings-card";
 import { DispatchQueueCard } from "./dispatch-queue-card";
+import { PipelineRunnerCard } from "./pipeline-runner-card";
 
 type Turn = { speaker: string; role?: string; text: string; used_rag?: boolean };
 type Roster = {
@@ -506,191 +507,12 @@ async function runQueueSubtasks() {
       <LogsCard tokenQS={tokenQS} />
 
         </div>
-        {/* Right column: debate + dispatch panel — pinned to viewport */}
+        {/* Right column: pipeline + dispatch panel — pinned to viewport */}
         <div className="lg:sticky lg:top-6 lg:self-start">
 
-      {/* Team tools */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Team tools</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activeRoles.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Assign a role above to unlock its tools (Researcher can download books and
-              study them; every role can query the knowledge base).
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <select
-                aria-label="Tool"
-                value={toolName}
-                onChange={(e) => setToolName(e.target.value)}
-                className="rounded border bg-transparent px-2 py-1.5 text-sm"
-              >
-                <option value="">— pick tool —</option>
-                {Object.entries(toolsForRole).map(([name, spec]) => (
-                  <option key={name} value={name}>
-                    {name} — {(spec as { description?: string }).description?.slice(0, 60)}
-                  </option>
-                ))}
-              </select>
-              <Button size="sm" disabled={!toolName || toolBusy} onClick={runTool}>
-                {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Run"}
-              </Button>
-            </div>
-          )}
-          {toolResult && (
-            <pre className="mt-3 max-h-56 overflow-auto rounded bg-muted p-2 text-xs">
-              {toolResult}
-            </pre>
-          )}
-          {toolError && <p className="mt-2 text-xs text-destructive">{toolError}</p>}
-        </CardContent>
-      </Card>
+      <PipelineRunnerCard />
 
-      {/* Working session */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Working session</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Topic or goal — e.g. design the billing service for v2"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
-            <Button onClick={() => speak()} disabled={!topic.trim() || Boolean(busyRole)}>
-              {busyRole === "__auto__" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Speak
-            </Button>
-          </div>
-          <p className="mt-1.5 flex flex-wrap items-center text-xs text-muted-foreground">
-            Or ask a specific role:
-            {activeRoles.map((r) => (
-              <Button
-                key={r}
-                variant="ghost"
-                size="sm"
-                className="ml-1 h-7 px-2 text-xs"
-                disabled={!topic.trim() || Boolean(busyRole)}
-                onClick={() => speak(r)}
-              >
-                {busyRole === r ? <Loader2 className="h-3 w-3 animate-spin" /> : r}
-              </Button>
-            ))}
-          </p>
-
-          {error && (
-            <p className="mt-3 rounded border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-              {error}
-            </p>
-          )}
-
-          <div className="mt-4 space-y-3">
-            {history.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                Set the topic and press Speak. Assigned characters respond in role,
-                citing your knowledge base when it helps.
-              </p>
-            )}
-            {history.map((turn, i) => (
-              <div key={i} className="flex gap-3">
-                <Avatar name={turn.speaker} id={charByName[turn.speaker]?.id} />
-                <div className="min-w-0 flex-1 rounded-lg border p-3">
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="text-sm font-medium">{turn.speaker}</span>
-                    {turn.role && (
-                      <Badge variant="outline" className="text-[10px]">
-                        {turn.role}
-                      </Badge>
-                    )}
-                    {turn.used_rag && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        RAG
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="whitespace-pre-wrap text-sm">{turn.text}</p>
-                </div>
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Judge → coding agents */}
-          <div className="mt-4 flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!topic.trim() || history.length === 0 || judgeBusy}
-              onClick={judgeAndDispatch}
-              title="Distill the debate into a task spec"
-            >
-              {judgeBusy && !spec ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Gavel className="h-4 w-4" />
-              )}
-              Judge
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={history.length === 0 || ingesting}
-              onClick={ingestTranscript}
-              title="Store this debate in the knowledge base so future debates can cite it"
-            >
-              {ingesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookPlus className="h-4 w-4" />}
-              Ingest into KB
-            </Button>
-            {spec && (
-              <Button size="sm" disabled={judgeBusy} onClick={runSubtasks}>
-                {judgeBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Rocket className="h-4 w-4" />
-                )}
-                Dispatch {spec.subtasks?.length ?? 0} subtask(s)
-              </Button>
-            )}
-            {spec && (
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={judgeBusy}
-                onClick={runQueueSubtasks}
-                title="Queue subtasks on the parallel worker pool (multi-project)"
-              >
-                {judgeBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ListChecks className="h-4 w-4" />
-                )}
-                Dispatch (queue)
-              </Button>
-            )}
-          </div>
-          {spec && (
-            <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-2 text-xs">
-              {JSON.stringify(spec, null, 2).slice(0, 2500)}
-            </pre>
-          )}
-          {ingestMsg && (
-            <p className="mt-2 text-xs text-muted-foreground">{ingestMsg}</p>
-          )}
-          {dispatchResult && (
-            <pre className="mt-2 max-h-56 overflow-auto rounded border p-2 text-xs">
-              {dispatchResult.slice(0, 3000)}
-            </pre>
-          )}
-        </CardContent>
-      </Card>
+      <DispatchQueueCard tokenQS={tokenQS} />
 
         </div>
       </div>
