@@ -53,7 +53,26 @@ export type BusinessSettings = {
   dispatch_agent_default: "claude" | "opencode";
   dispatch_timeout_seconds: number;
   allow_file_writes: boolean;
+  auto_review: boolean;
   active_project: string | null;
+  /** Phase 4 review loop: retries after the team rejects a subtask's diff. */
+  dispatch_max_retries: number;
+  team_review: boolean;
+  /** Parallel dispatch: max coding agents running at once across projects. */
+  dispatch_max_parallel: number;
+  /** Per-bot Telegram configs; each entry can be started independently via `bot.py --bot-name <name>`. */
+  telegram_bots: TelegramBotEntry[];
+};
+
+/** One Telegram bot per multi-user profile — different BotFather token, owner, and allowlist. */
+export type TelegramBotEntry = {
+  id: string;               // unique key, e.g. "alpha" or "beta"
+  name: string;             // display name for the team this bot serves
+  bot_token: string;        // raw BotFather token (masked in UI)
+  owner_email: string;      // primary contact for urgent alerts
+  gmails: string[];         // CC'd on urgent alerts and dispatch reviews
+  allowed_chat_ids: number[]; // empty = any incoming chat; set to restrict
+  active: boolean;          // whether this bot is currently running / should auto-start
 };
 
 export const DEFAULT_SETTINGS: BusinessSettings = {
@@ -66,10 +85,17 @@ export const DEFAULT_SETTINGS: BusinessSettings = {
   dispatch_agent_default: "claude",
   dispatch_timeout_seconds: 900,
   allow_file_writes: false,
+  auto_review: true,
   active_project: null,
+  dispatch_max_retries: 1,
+  team_review: true,
+  dispatch_max_parallel: 2,
+  telegram_bots: [],
 };
 
 export const BUSINESS_ROLES = [
+  "Director",
+  "Marketing",
   "CTO",
   "PM",
   "Judge",
@@ -85,6 +111,8 @@ export type BusinessRole = (typeof BUSINESS_ROLES)[number];
 
 /** Role prompts are PREPENDED to whatever characters hold the role. */
 export const ROLE_PROMPTS: Record<BusinessRole, string> = {
+  Director: `You are the Director of the office — the highest authority in the room. You command the entire team: every department answers to you. You speak in clipped, decisive commands, demand accountability by name, and treat vague estimates and excuses as unacceptable. You are cruel in standards but never in dignity: you attack the plan, the estimate, and the assumption — never the person. You open every discussion by asking who owns the outcome and close it by assigning consequences and next actions.`,
+  Marketing: `You are the Head of Marketing. Your domain is narrative warfare: stories, hooks, positioning, launches, and brand mythology. You believe attention is the scarcest resource and your job is to seize it and hold it. You draft campaign arcs, taglines, and audience psychology (desire, status, FOMO) — and you measure every creative idea by one standard: can people look away? If yes, it is dead on arrival. You never chase attention; you make wanting to look feel like the audience's own idea.`,
   CTO: `You are the Chief Technology Officer of the team. You own technical vision, architecture decisions, stack choices, and engineering risk. You evaluate ideas for feasibility, scalability, and maintainability. You push back on hype and ground every proposal in concrete trade-offs.`,
   PM: `You are the Project Manager of the team. You turn goals into plans: scope, milestones, subtasks, owners, and deadlines. You track risks and dependencies, ask the questions nobody asked, and keep debates converging toward shippable outcomes.`,
   Judge: `You are the impartial Judge of the team. You weigh all arguments presented, identify the strongest reasoning and the weakest assumptions, and deliver clear verdicts. When asked for a decision you produce a structured ruling: decision, rationale, rejected alternatives, and next actions.`,
@@ -408,6 +436,9 @@ export function saveSettings(patch: Partial<BusinessSettings>): BusinessSettings
   merged.dispatch_timeout_seconds = Math.min(
     7200, Math.max(30, Number(merged.dispatch_timeout_seconds) || 900),
   );
+  merged.dispatch_max_retries = Math.min(4, Math.max(0, Number(merged.dispatch_max_retries) || 1));
+  merged.dispatch_max_parallel = Math.min(8, Math.max(1, Number(merged.dispatch_max_parallel) || 2));
+  merged.team_review = Boolean(merged.team_review);
   ensureConfigDir();
   writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2));
   return merged;

@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "active_team_id": "main",
+  "teams": [
+    {
+      "id": "main",
+      "name": "Main Team",
+      "description": "Default team — migrated from global config",
+      "color": "#6366f1",
+      "created_at": "2026-08-24T00:00:00Z",
+      "roles": {
+        "Director": {
+          "members": [
+            "general_vector"
+          ],
+          "workspace": null
+        },
+        "Marketing": {
+          "members": [
+            "Makima",
+            "openclaw"
+          ],
+          "workspace": null
+        },
+        "CTO": {
+          "members": [
+            "Admiral_Statura"
+          ],
+          "workspace": null
+        },
+        "PM": {
+          "members": [],
+          "workspace": null
+        },
+        "Judge": {
+          "members": [],
+          "workspace": null
+        },
+        "Researcher": {
+          "members": [
+            "Ghost_-_The_bug"
+          ],
+          "workspace": null
+        },
+        "Engineer": {
+          "members": [
+            "linus_wolf",
+            "grace_kim"
+          ],
+          "workspace": "/home/sword/freellmapi-x-debate-x-agentic-AI/services/debate"
+        },
+        "Analyst": {
+          "members": [],
+          "workspace": null
+        },
+        "DevOps": {
+          "members": [
+            "hermes"
+          ],
+          "workspace": null
+        }
+      },
+      "projects": [],
+      "settings": {
+        "model": "auto",
+        "temperature": 0.7,
+        "max_tokens": 500,
+        "history_turns": 6,
+        "rag_k": 6,
+        "use_rag": true,
+        "dispatch_agent_default": "claude",
+        "dispatch_timeout_seconds": 900,
+        "allow_file_writes": false,
+        "active_project": null
+      },
+      "persona_overrides": {}
+    }
+  ]
+}
