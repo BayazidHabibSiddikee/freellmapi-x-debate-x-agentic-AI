@@ -10,7 +10,7 @@
  * server reads it on every request (cheap — small file, OS-cached).
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 

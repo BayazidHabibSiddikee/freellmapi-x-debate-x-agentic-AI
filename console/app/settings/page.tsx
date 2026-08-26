@@ -7,8 +7,6 @@ import SettingsForm from "@/components/settings/SettingsForm";
 
 export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic";
-
 export default async function SettingsPage() {
   const cfg = getConfig();
   const update = await checkForUpdate();
