@@ -60,6 +60,9 @@ A single workspace merging **five** previously separate projects:
 7. **Industry marketplace**: personas publish hard-won lessons (`publish_insight`) to a shared cross-team pool; any role can search it (`cross_team_search`) before starting work that another team may have already solved or failed at.
 8. **Urgent alerts**: when an agent hits a blocker mid-debate it can page owners instantly via their configured Telegram bot (`urgent_alert` tool).
 9. **Teams**: multiple independent teams share the same deployment — each with its own roles, project workspace, and settings.
+10. **Daily autonomous loop**: each enabled team runs a scheduled 10–15 turn internal debate with no user present; the team lead acts as judge, engineers commit gated by review panel, and a daily digest (with escalation branching to a leadership round table) is sent to you via Telegram or console. See architecture below.
+
+![Per-team daily autonomous loop](repo-assets/swordoffice_daily_autonomous_loop.svg)
 
 ## Quick start
 
@@ -471,6 +474,12 @@ curl http://localhost:3001/v1/embeddings \
 The default family, per-provider toggles, and priorities live on the dashboard's **Models → Embeddings** page. Pick your family once and stick with it for a given vector store — that's the whole point of the family model.
 
 ## Screenshots
+
+### Business module architecture
+
+The multi-team hierarchy with daily autonomous loop, escalation gating, and leadership round table.
+
+![Business module tree hierarchy](repo-assets/swordoffice_tree_hierarchy.svg)
 
 ### Keys
 
