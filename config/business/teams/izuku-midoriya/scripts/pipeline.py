@@ -136,52 +136,52 @@ def step_3_marketing_hook(iteration: int, story_file: Path) -> Path:
 # ── Step 4: Generate Images ─────────────────────────────────────────────────
 
 def step_4_generate_images(iteration: int, hook_data: dict) -> Path:
-    """Generate scene images using MoneyPrinterTurbo local pipeline or PIL fallback."""
-    log(f"Iter {iteration}: Generating images")
+    """Generate scene video clips via MoneyPrinterTurbo CLI with Pexels stock footage."""
+    log(f"Iter {iteration}: Generating video clips")
     img_dir = IMAGES_DIR / f"iter_{iteration:02d}"
     img_dir.mkdir(exist_ok=True)
 
-    scenes = [
-        f"{NICHE}: Izuku standing in rain-soaked ruins, medical kit, cinematic lighting, dark atmosphere",
-        f"{NICHE}: Izuku treating a wounded soldier on the battlefield, dramatic shadows, war-torn",
-        f"{NICHE}: Izuku walking through destroyed city skyline, smoke and orange sky, silhouette",
-        f"{NICHE}: Close-up of Izuku's face, determined eyes, scar across cheek, firelight reflection",
-        f"{NICHE}: Izuku carrying a child through explosions, motion blur, war chaos behind",
+    import subprocess
+
+    subject = f"Izuku Midoriya war survival: {hook_data.get('title', f'chapter {iteration}')}"
+    task_dir = OUTPUT_DIR / f"task_{iteration:02d}"
+    task_dir.mkdir(exist_ok=True)
+
+    cmd = [
+        sys.executable,
+        str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
+        "--video-subject", subject,
+        "--video-source", "pexels",
+        "--video-count", "1",
+        "--stop-at", "materials",
+        "--video-aspect", "9:16",
     ]
 
-    # Try MoneyPrinterTurbo API first
+    log(f"  Running MoneyPrinterTurbo: {subject[:60]}...")
     try:
-        import requests
-        for i, scene in enumerate(scenes):
-            img_file = img_dir / f"scene_{i+1}.png"
-            if img_file.exists():
-                continue
-
-            # Use Pexels source via MoneyPrinterTurbo's local pipeline
-            resp = requests.post(
-                f"{MONEY_PRINTER_URL}/api/v1/videos",
-                json={
-                    "video_subject": scene,
-                    "video_aspect": "9:16",
-                    "video_source": "pexels",
-                    "video_count": 1,
-                    "stop_at": "materials",
-                },
-                timeout=30,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                log(f"  Scene {i+1}: submitted (task={data.get('task_id', '?')})")
-            else:
-                log(f"  Scene {i+1}: API {resp.status_code}, using placeholder")
-                img_file.write_text(f"[Image: {scene}]")
-        log(f"  Submitted {len(scenes)} scene requests")
-    except ImportError:
-        log("  requests not installed — using placeholders")
-        for i, scene in enumerate(scenes):
-            img_file = img_dir / f"scene_{i+1}.png"
-            if not img_file.exists():
-                img_file.write_text(f"[Image: {scene}]")
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=120,
+            cwd=str(Path("/home/sword/Documents/MoneyPrinterTurbo")),
+        )
+        if result.returncode == 0:
+            # Parse JSON output for material paths
+            for line in reversed(result.stdout.strip().split("\n")):
+                try:
+                    data = json.loads(line)
+                    materials = data.get("result", {}).get("materials", [])
+                    for j, mat in enumerate(materials):
+                        dest = img_dir / f"clip_{j+1:02d}.mp4"
+                        shutil.copy2(mat, dest)
+                    log(f"  Downloaded {len(materials)} video clips")
+                    break
+                except (json.JSONDecodeError, KeyError):
+                    continue
+        else:
+            log(f"  CLI error (code {result.returncode}): {result.stderr[:200]}")
+    except subprocess.TimeoutExpired:
+        log("  CLI timed out after 120s")
+    except Exception as e:
+        log(f"  Error: {e}")
 
     return img_dir
 
@@ -224,7 +224,7 @@ def step_5_generate_voices(iteration: int, story_file: Path) -> Path:
 # ── Step 6: Assemble Video ──────────────────────────────────────────────────
 
 def step_6_assemble_video(iteration: int, img_dir: Path, voice_file: Path, hook_data: dict) -> Path:
-    """Assemble final video using MoneyPrinterTurbo CLI."""
+    """Assemble final video using MoneyPrinterTurbo full pipeline."""
     log(f"Iter {iteration}: Assembling video")
     output_file = OUTPUT_DIR / f"izuku_chapter_{iteration:02d}.mp4"
 
@@ -232,36 +232,68 @@ def step_6_assemble_video(iteration: int, img_dir: Path, voice_file: Path, hook_
         log(f"  Video exists: {output_file.name}")
         return output_file
 
-    try:
-        import subprocess
-        scene_files = sorted(img_dir.glob("scene_*.png"))
-        if not scene_files:
-            log("  No scene images — skipping video assembly")
-            output_file.write_text(f"[No images for chapter {iteration}]")
-            return output_file
+    import subprocess
 
-        # Use MoneyPrinterTurbo CLI with local images
+    subject = f"Izuku Midoriya war survival: {hook_data.get('title', f'chapter {iteration}')}"
+    voice_name = "en-US-GuyNeural"
+
+    # Use local clips if we have them, otherwise let MoneyPrinterTurbo fetch from Pexels
+    clip_files = sorted(img_dir.glob("clip_*.mp4"))
+    if clip_files:
+        materials_arg = ",".join(str(f) for f in clip_files)
         cmd = [
             sys.executable,
             str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
-            "--video-subject", hook_data.get("title", f"Chapter {iteration}"),
+            "--video-subject", subject,
             "--video-source", "local",
-            "--video-materials", ",".join(str(f) for f in scene_files),
-            "--video-aspect", "9:16",
+            "--video-materials", materials_arg,
             "--video-count", "1",
             "--stop-at", "video",
+            "--video-aspect", "9:16",
+            "--voice-name", voice_name,
+            "--subtitle-enabled",
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        if result.returncode == 0:
-            log(f"  Video generated via MoneyPrinterTurbo")
-        else:
-            log(f"  CLI error: {result.stderr[:200]}")
-            output_file.write_text(f"[Video placeholder for chapter {iteration}]")
-    except Exception as e:
-        log(f"  Assembly failed ({e}), using placeholder")
-        output_file.write_text(f"[Video placeholder for chapter {iteration}]")
+    else:
+        # Full pipeline: generate script + fetch materials + render
+        cmd = [
+            sys.executable,
+            str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
+            "--video-subject", subject,
+            "--video-source", "pexels",
+            "--video-count", "1",
+            "--stop-at", "video",
+            "--video-aspect", "9:16",
+            "--voice-name", voice_name,
+            "--subtitle-enabled",
+        ]
 
-    log(f"  Video: {output_file.name}")
+    log(f"  Running full pipeline: {subject[:60]}...")
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=600,
+            cwd=str(Path("/home/sword/Documents/MoneyPrinterTurbo")),
+        )
+        if result.returncode == 0:
+            # Find the generated video in task output
+            for line in reversed(result.stdout.strip().split("\n")):
+                try:
+                    data = json.loads(line)
+                    video_path = data.get("result", {}).get("video", "")
+                    if video_path and Path(video_path).exists():
+                        shutil.copy2(video_path, output_file)
+                        log(f"  Video assembled: {output_file.name}")
+                        return output_file
+                except (json.JSONDecodeError, KeyError):
+                    continue
+            log("  CLI completed but no video path found in output")
+        else:
+            log(f"  CLI error (code {result.returncode}): {result.stderr[:300]}")
+    except subprocess.TimeoutExpired:
+        log("  CLI timed out after 600s")
+    except Exception as e:
+        log(f"  Error: {e}")
+
+    output_file.write_text(f"[Video assembly failed for chapter {iteration}]")
     return output_file
 
 
