@@ -189,7 +189,7 @@ def step_4_generate_images(iteration: int, hook_data: dict) -> Path:
 # ── Step 5: Generate Voices ─────────────────────────────────────────────────
 
 def step_5_generate_voices(iteration: int, story_file: Path) -> Path:
-    """Generate voiceover using VibeVoice TTS."""
+    """Generate voiceover using Piper TTS (local neural voice)."""
     log(f"Iter {iteration}: Generating voiceover")
     voice_file = VOICES_DIR / f"narration_{iteration:02d}.wav"
 
@@ -198,25 +198,59 @@ def step_5_generate_voices(iteration: int, story_file: Path) -> Path:
         return voice_file
 
     story_text = story_file.read_text() if story_file.exists() else ""
+    # Strip markdown headers and metadata
+    clean_text = ""
+    for line in story_text.split("\n"):
+        line = line.strip()
+        if not line or line.startswith("#") or line.startswith("[") or line.startswith("---"):
+            continue
+        clean_text += line + " "
 
-    # Use edge-tts (VibeVoice has transformers version conflict)
-    try:
-        import asyncio
-        import edge_tts
+    if not clean_text.strip():
+        log("  No text to synthesize")
+        voice_file.write_text(f"[Empty text for chapter {iteration}]")
+        return voice_file
 
-        voice_id = "en-US-GuyNeural"  # deep male narrator voice
-        rate = "-10%"
-        volume = "+0%"
+    # Piper TTS — local neural voice, much better than edge-tts
+    piper_model = Path("/home/sword/Documents/piper-voices/en_US-ryan-medium.onnx")
+    if not piper_model.exists():
+        log("  Piper model not found, falling back to edge-tts")
+        piper_model = None
 
-        async def _tts():
-            comm = edge_tts.Communicate(story_text[:1500], voice=voice_id, rate=rate, volume=volume)
-            await comm.save(str(voice_file))
+    if piper_model:
+        try:
+            import subprocess
+            text_file = VOICES_DIR / f"text_{iteration:02d}.txt"
+            text_file.write_text(clean_text[:3000])
 
-        asyncio.run(_tts())
-        log(f"  Voice generated: {voice_file.name}")
-    except Exception as e:
-        log(f"  edge-tts failed ({e}), using placeholder")
-        voice_file.write_text(f"[Voice placeholder for chapter {iteration}]")
+            result = subprocess.run(
+                ["piper", "-m", str(piper_model), "-f", str(voice_file)],
+                input=clean_text[:3000],
+                capture_output=True, text=True, timeout=120,
+            )
+            if voice_file.exists():
+                log(f"  Voice generated (Piper): {voice_file.name}")
+            else:
+                log(f"  Piper failed: {result.stderr[:200]}")
+                voice_file.write_text(f"[Piper failed for chapter {iteration}]")
+        except Exception as e:
+            log(f"  Piper error: {e}")
+            voice_file.write_text(f"[Piper error for chapter {iteration}]")
+    else:
+        # Fallback to edge-tts
+        try:
+            import asyncio
+            import edge_tts
+
+            async def _tts():
+                comm = edge_tts.Communicate(clean_text[:1500], voice="en-US-GuyNeural", rate="-10%")
+                await comm.save(str(voice_file))
+
+            asyncio.run(_tts())
+            log(f"  Voice generated (edge-tts fallback): {voice_file.name}")
+        except Exception as e:
+            log(f"  edge-tts failed ({e})")
+            voice_file.write_text(f"[TTS failed for chapter {iteration}]")
 
     return voice_file
 
@@ -224,74 +258,100 @@ def step_5_generate_voices(iteration: int, story_file: Path) -> Path:
 # ── Step 6: Assemble Video ──────────────────────────────────────────────────
 
 def step_6_assemble_video(iteration: int, img_dir: Path, voice_file: Path, hook_data: dict) -> Path:
-    """Assemble final video using MoneyPrinterTurbo full pipeline."""
+    """Assemble video: MoneyPrinterTurbo clips + Piper audio + Ken Burns via ffmpeg."""
     log(f"Iter {iteration}: Assembling video")
     output_file = OUTPUT_DIR / f"izuku_chapter_{iteration:02d}.mp4"
 
-    if output_file.exists():
+    if output_file.exists() and output_file.stat().st_size > 100000:
         log(f"  Video exists: {output_file.name}")
         return output_file
 
     import subprocess
 
-    subject = f"Izuku Midoriya war survival: {hook_data.get('title', f'chapter {iteration}')}"
-    voice_name = "en-US-GuyNeural"
-
-    # Use local clips if we have them, otherwise let MoneyPrinterTurbo fetch from Pexels
+    # Step A: Get video clips from MoneyPrinterTurbo
     clip_files = sorted(img_dir.glob("clip_*.mp4"))
-    if clip_files:
-        materials_arg = ",".join(str(f) for f in clip_files)
-        cmd = [
-            sys.executable,
-            str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
-            "--video-subject", subject,
-            "--video-source", "local",
-            "--video-materials", materials_arg,
-            "--video-count", "1",
-            "--stop-at", "video",
-            "--video-aspect", "9:16",
-            "--voice-name", voice_name,
-            "--subtitle-enabled",
-        ]
-    else:
-        # Full pipeline: generate script + fetch materials + render
-        cmd = [
-            sys.executable,
-            str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
-            "--video-subject", subject,
-            "--video-source", "pexels",
-            "--video-count", "1",
-            "--stop-at", "video",
-            "--video-aspect", "9:16",
-            "--voice-name", voice_name,
-            "--subtitle-enabled",
-        ]
+    combined_video = OUTPUT_DIR / f"combined_{iteration:02d}.mp4"
 
-    log(f"  Running full pipeline: {subject[:60]}...")
-    try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=600,
-            cwd=str(Path("/home/sword/Documents/MoneyPrinterTurbo")),
-        )
-        if result.returncode == 0:
-            # Find the generated video in task output
-            for line in reversed(result.stdout.strip().split("\n")):
-                try:
-                    data = json.loads(line)
-                    video_path = data.get("result", {}).get("video", "")
-                    if video_path and Path(video_path).exists():
-                        shutil.copy2(video_path, output_file)
-                        log(f"  Video assembled: {output_file.name}")
-                        return output_file
-                except (json.JSONDecodeError, KeyError):
-                    continue
-            log("  CLI completed but no video path found in output")
-        else:
-            log(f"  CLI error (code {result.returncode}): {result.stderr[:300]}")
-    except subprocess.TimeoutExpired:
-        log("  CLI timed out after 600s")
-    except Exception as e:
-        log(f"  Error: {e}")
+    if not clip_files or not combined_video.exists():
+        subject = f"Izuku Midoriya war survival: {hook_data.get('title', f'chapter {iteration}')}"
+        log(f"  Fetching clips: {subject[:60]}...")
+
+        if not clip_files:
+            # Fetch from Pexels
+            cmd_fetch = [
+                sys.executable,
+                str(Path("/home/sword/Documents/MoneyPrinterTurbo/cli.py")),
+                "--video-subject", subject,
+                "--video-source", "pexels",
+                "--video-count", "1",
+                "--stop-at", "materials",
+                "--video-aspect", "9:16",
+            ]
+            try:
+                result = subprocess.run(
+                    cmd_fetch, capture_output=True, text=True, timeout=120,
+                    cwd=str(Path("/home/sword/Documents/MoneyPrinterTurbo")),
+                )
+                if result.returncode == 0:
+                    for line in reversed(result.stdout.strip().split("\n")):
+                        try:
+                            data = json.loads(line)
+                            materials = data.get("result", {}).get("materials", [])
+                            for j, mat in enumerate(materials):
+                                shutil.copy2(mat, img_dir / f"clip_{j+1:02d}.mp4")
+                            clip_files = sorted(img_dir.glob("clip_*.mp4"))
+                            log(f"  Downloaded {len(clip_files)} clips")
+                            break
+                        except (json.JSONDecodeError, KeyError):
+                            continue
+            except Exception as e:
+                log(f"  Clip fetch failed: {e}")
+
+        # Concatenate clips
+        if clip_files:
+            concat_file = OUTPUT_DIR / f"concat_{iteration:02d}.txt"
+            concat_file.write_text("\n".join(f"file '{f}'" for f in clip_files))
+            subprocess.run(
+                ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
+                 "-c", "copy", str(combined_video)],
+                capture_output=True, timeout=60,
+            )
+            log(f"  Combined {len(clip_files)} clips")
+
+    if not combined_video.exists():
+        log("  No video clips available")
+        output_file.write_text(f"[No clips for chapter {iteration}]")
+        return output_file
+
+    # Step B: Merge Piper audio + video with Ken Burns zoom
+    has_audio = voice_file.exists() and voice_file.suffix == ".wav" and voice_file.stat().st_size > 1000
+
+    if has_audio:
+        log(f"  Merging Piper audio + Ken Burns zoom...")
+        try:
+            subprocess.run(
+                ["ffmpeg", "-y",
+                 "-i", str(combined_video),
+                 "-i", str(voice_file),
+                 "-filter_complex",
+                 "[0:v]zoompan=z='min(zoom+0.001,1.5)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[v]",
+                 "-map", "[v]", "-map", "1:a",
+                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                 "-c:a", "aac", "-b:a", "128k",
+                 "-shortest",
+                 str(output_file)],
+                capture_output=True, timeout=300,
+            )
+            if output_file.exists() and output_file.stat().st_size > 100000:
+                log(f"  Video assembled: {output_file.name} ({output_file.stat().st_size // 1024}KB)")
+                return output_file
+        except Exception as e:
+            log(f"  ffmpeg merge failed: {e}")
+    else:
+        # No Piper audio — just copy combined video
+        shutil.copy2(combined_video, output_file)
+        log(f"  Video assembled (no custom audio): {output_file.name}")
+        return output_file
 
     output_file.write_text(f"[Video assembly failed for chapter {iteration}]")
     return output_file
