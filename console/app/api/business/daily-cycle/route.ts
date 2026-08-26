@@ -473,7 +473,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Compose and persist daily digest
-  const { markdown: digest, path: digestPath, roundTablePath } = await composeDailyDigest(results, roundTable);
+  const { markdown: digest, path: digestPath } = await composeDailyDigest(results, roundTable);
 
   return NextResponse.json({
     ok: true,
