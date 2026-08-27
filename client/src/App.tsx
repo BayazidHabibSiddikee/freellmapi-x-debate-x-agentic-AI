@@ -25,7 +25,7 @@ const navItems = [
   { to: '/debate', label: 'Debate', external: true },
   { to: '/personal', label: 'Personal', external: true },
   { to: '/knowledge', label: 'Knowledge', external: true },
-  { to: typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:18443/business` : 'http://localhost:18443/business', label: '🏢 Business (Console)', external: true },
+  { to: typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_CONSOLE_PORT || '18443'}/business` : '/business', label: '🏢 Business (Console)', external: true },
   { to: '/keys', label: 'Keys' },
   { to: '/analytics', label: 'Analytics' },
   { to: '/premium', label: 'Premium' },

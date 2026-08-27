@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 const components: Components = {
   p: ({ children }) => (
-    <p className="my-2 first:mt-0 last:mb-0 whitespace-pre-wrap wrap-break-word">
+    <p className="my-2 first:mt-0 last:mb-0 whitespace-pre-wrap break-words">
       {children}
     </p>
   ),
@@ -14,7 +14,7 @@ const components: Components = {
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="underline underline-offset-2 decoration-foreground/40 hover:decoration-foreground wrap-break-word"
+      className="underline underline-offset-2 decoration-foreground/40 hover:decoration-foreground break-words"
     >
       {children}
     </a>
@@ -83,7 +83,7 @@ const components: Components = {
     }
     return (
       <code
-        className="rounded bg-background/60 px-1 py-0.5 font-mono text-[0.85em] wrap-break-word"
+        className="rounded bg-background/60 px-1 py-0.5 font-mono text-[0.85em] break-words"
         {...props}
       >
         {children}

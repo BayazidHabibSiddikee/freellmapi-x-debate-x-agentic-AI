@@ -20,6 +20,7 @@ interface FallbackEntry {
 }
 
 interface ChatMessage {
+  id: string
   role: 'user' | 'assistant'
   content: string
   meta?: {
@@ -96,7 +97,7 @@ export default function PlaygroundPage() {
     if (!currentId) return
     const entry = history.find(h => h.id === currentId)
     if (entry) {
-      setMessages(entry.messages)
+      setMessages(entry.messages.map(m => ({ ...m, id: m.id ?? crypto.randomUUID() })))
       setSelectedModel(entry.model)
     }
   }, [currentId, history])
@@ -138,7 +139,7 @@ export default function PlaygroundPage() {
     const text = input.trim()
     if (!text || loading) return
 
-    const userMsg: ChatMessage = { role: 'user', content: text }
+    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
     setInput('')
@@ -162,7 +163,7 @@ export default function PlaygroundPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))
-        setMessages([...newMessages, { role: 'assistant', content: `Error: ${err.error?.message ?? 'Unknown error'}` }])
+        setMessages([...newMessages, { id: crypto.randomUUID(), role: 'assistant', content: `Error: ${err.error?.message ?? 'Unknown error'}` }])
         return
       }
 
@@ -172,6 +173,7 @@ export default function PlaygroundPage() {
       const usage = data.usage ?? {}
 
       const finalMsg: ChatMessage = {
+        id: crypto.randomUUID(),
         role: 'assistant',
         content,
         meta: {
@@ -199,7 +201,7 @@ export default function PlaygroundPage() {
       if (isNew) setCurrentId(entryId)
       invalidateHistory()
     } catch (err: any) {
-      setMessages([...newMessages, { role: 'assistant', content: `Error: ${err.message}` }])
+      setMessages([...newMessages, { id: crypto.randomUUID(), role: 'assistant', content: `Error: ${err.message}` }])
     } finally {
       setLoading(false)
       setTimeout(() => inputRef.current?.focus(), 0)
@@ -357,8 +359,8 @@ export default function PlaygroundPage() {
                 </div>
               ) : (
                 <>
-                  {messages.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {messages.map((msg) => (
+                    <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                         {msg.role === 'assistant' ? <Markdown>{msg.content}</Markdown> : <div className="whitespace-pre-wrap">{msg.content}</div>}
                         {msg.meta && (
