@@ -47,7 +47,7 @@ const axisStyle = { fontSize: 11, fill: 'var(--muted-foreground)' } as const
 const gridStyle = 'var(--border)'
 const primaryFill = 'var(--foreground)'
 
-export default function AnalyticsPage() {
+export default function UsagePage() {
   const [range, setRange] = useState<TimeRange>('7d')
 
   const { data: summary } = useQuery({

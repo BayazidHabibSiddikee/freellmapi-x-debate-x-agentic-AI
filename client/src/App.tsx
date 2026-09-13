@@ -8,34 +8,20 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import KeysPage from '@/pages/KeysPage'
-import PlaygroundPage from '@/pages/PlaygroundPage'
-import FallbackPage from '@/pages/FallbackPage'
-import EmbeddingsPage from '@/pages/EmbeddingsPage'
-import AnalyticsPage from '@/pages/AnalyticsPage'
-import PremiumPage from '@/pages/PremiumPage'
+import UsagePage from '@/pages/UsagePage'
 
 const queryClient = new QueryClient()
 
 const navItems = [
-  { to: '/models', label: 'Models' },
-  { to: '/playground', label: 'Playground' },
-  { to: '/debate', label: 'Debate', external: true },
-  { to: '/personal', label: 'Personal', external: true },
-  { to: '/knowledge', label: 'Knowledge', external: true },
   { to: '/keys', label: 'Keys' },
-  { to: '/analytics', label: 'Analytics' },
-  { to: '/premium', label: 'Premium' },
+  { to: '/usage', label: 'Usage' },
 ]
 
 function getPreferredDarkMode() {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
+  if (typeof window === 'undefined') return false
   const stored = localStorage.getItem('theme')
   return stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)
 }
@@ -43,28 +29,21 @@ function getPreferredDarkMode() {
 function NavItem({ to, children, external = false }: { to: string; children: React.ReactNode; external?: boolean }) {
   if (external) {
     return (
-      <a
-        href={to}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="relative text-sm px-1 py-4 transition-colors text-muted-foreground hover:text-foreground"
-      >
+      <a href={to} target="_blank" rel="noopener noreferrer"
+        className="relative text-sm px-1 py-4 transition-colors text-muted-foreground hover:text-foreground">
         {children}
         <span className="ml-1 text-[10px]">↗</span>
       </a>
     )
   }
   return (
-    <NavLink
-      to={to}
+    <NavLink to={to}
       className={({ isActive }) =>
         `relative text-sm px-1 py-4 transition-colors ${
-          isActive
-            ? 'text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-foreground'
-            : 'text-muted-foreground hover:text-foreground'
+          isActive ? 'text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-foreground'
+                   : 'text-muted-foreground hover:text-foreground'
         }`
-      }
-    >
+      }>
       {children}
     </NavLink>
   )
@@ -72,30 +51,23 @@ function NavItem({ to, children, external = false }: { to: string; children: Rea
 
 function useDarkMode() {
   const [dark, setDark] = useState(getPreferredDarkMode)
-
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
   }, [dark])
-
   function toggle() {
-    setDark((current) => {
+    setDark(current => {
       const next = !current
       localStorage.setItem('theme', next ? 'dark' : 'light')
       return next
     })
   }
-
   return { dark, toggle }
 }
 
 function DarkModeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={onToggle}
-      aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-    >
+    <Button variant="ghost" size="sm" onClick={onToggle}
+      aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}>
       {dark ? <Sun /> : <Moon />}
     </Button>
   )
@@ -110,15 +82,7 @@ function Brand() {
   )
 }
 
-// True when the dashboard runs inside the desktop shell (Electron preload
-// sets this). The navbar then doubles as the window title bar: draggable,
-// padded for the macOS traffic lights, and without the web-only Sign out.
 const isDesktopApp = typeof window !== 'undefined' && (window as any).__FREEAPI_DESKTOP__ === true
-
-// The preload's own early classList.add can be lost (it may run before this
-// document exists), so the client claims the class itself at module load —
-// before the first React paint — keeping html.desktop CSS (transparent body,
-// glass backdrop) reliable.
 if (isDesktopApp) {
   document.documentElement.classList.add('desktop')
 }
@@ -133,49 +97,32 @@ function Navbar() {
   }
 
   return (
-    <header
-      // In the desktop shell the body backdrop is already translucent glass;
-      // a lighter wash keeps the title bar from looking more solid than the page.
-      className={`sticky top-0 z-40 border-b backdrop-blur ${isDesktopApp ? 'bg-background/45' : 'bg-background/80'}`}
-      style={isDesktopApp ? ({ WebkitAppRegion: 'drag' } as React.CSSProperties) : undefined}
-    >
-      <div
-        className={`mx-auto flex max-w-6xl items-center px-4 sm:px-6 ${isDesktopApp ? 'pl-20 sm:pl-20' : ''}`}
-        style={isDesktopApp ? { minHeight: 52 } : undefined}
-      >
+    <header className={`sticky top-0 z-40 border-b backdrop-blur ${isDesktopApp ? 'bg-background/45' : 'bg-background/80'}`}
+      style={isDesktopApp ? ({ WebkitAppRegion: 'drag' } as React.CSSProperties) : undefined}>
+      <div className={`mx-auto flex max-w-6xl items-center px-4 sm:px-6 ${isDesktopApp ? 'pl-20 sm:pl-20' : ''}`}
+        style={isDesktopApp ? { minHeight: 52 } : undefined}>
         <Brand />
-        <nav
-          className="ml-10 hidden items-center gap-6 md:flex"
-          style={isDesktopApp ? ({ WebkitAppRegion: 'no-drag' } as React.CSSProperties) : undefined}
-        >
+        <nav className="ml-10 hidden items-center gap-6 md:flex"
+          style={isDesktopApp ? ({ WebkitAppRegion: 'no-drag' } as React.CSSProperties) : undefined}>
           {navItems.map((item) => (
             <NavItem key={item.to} to={item.to} external={item.external}>
               {item.label}
             </NavItem>
           ))}
         </nav>
-        <div
-          className="ml-auto hidden items-center gap-1 md:flex"
-          style={isDesktopApp ? ({ WebkitAppRegion: 'no-drag' } as React.CSSProperties) : undefined}
-        >
+        <div className="ml-auto hidden items-center gap-1 md:flex"
+          style={isDesktopApp ? ({ WebkitAppRegion: 'no-drag' } as React.CSSProperties) : undefined}>
           <DarkModeToggle dark={dark} onToggle={toggle} />
         </div>
         <div className="ml-auto md:hidden">
           <DropdownMenu>
-            <DropdownMenuTrigger
-              className={buttonVariants({ variant: 'ghost', size: 'icon' })}
-              aria-label="Open navigation menu"
-            >
-              <Menu />
-            </DropdownMenuTrigger>
+            <DropdownMenuTrigger className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+              aria-label="Open navigation menu"><Menu /></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuGroup>
                 {navItems.map((item) => (
-                  <DropdownMenuItem
-                    key={item.to}
-                    onClick={() => navigate(item.to)}
-                    className={isActiveRoute(item.to) ? 'bg-accent text-accent-foreground font-medium' : undefined}
-                  >
+                  <DropdownMenuItem key={item.to} onClick={() => navigate(item.to)}
+                    className={isActiveRoute(item.to) ? 'bg-accent text-accent-foreground font-medium' : undefined}>
                     {item.label}
                   </DropdownMenuItem>
                 ))}
@@ -192,24 +139,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <div className={`min-h-screen ${isDesktopApp ? 'desktop-backdrop' : 'bg-background'}`}>
-            <Navbar />
-            <main className="max-w-6xl mx-auto px-6 py-8">
-              <Routes>
-                <Route path="/" element={<Navigate to="/models/chat" replace />} />
-                <Route path="/models" element={<Navigate to="/models/chat" replace />} />
-                <Route path="/models/chat" element={<FallbackPage />} />
-                <Route path="/models/embeddings" element={<EmbeddingsPage />} />
-                <Route path="/playground" element={<PlaygroundPage />} />
-                <Route path="/keys" element={<KeysPage />} />
-                <Route path="/fallback" element={<Navigate to="/models/chat" replace />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/premium" element={<PremiumPage />} />
-                <Route path="/test" element={<Navigate to="/playground" replace />} />
-                <Route path="/health" element={<Navigate to="/keys" replace />} />
-              </Routes>
-            </main>
-          </div>
+        <div className={`min-h-screen ${isDesktopApp ? 'desktop-backdrop' : 'bg-background'}`}>
+          <Navbar />
+          <main className="max-w-6xl mx-auto px-6 py-8">
+            <Routes>
+              <Route path="/" element={<Navigate to="/keys" replace />} />
+              <Route path="/keys" element={<KeysPage />} />
+              <Route path="/usage" element={<UsagePage />} />
+            </Routes>
+          </main>
+        </div>
       </BrowserRouter>
     </QueryClientProvider>
   )
