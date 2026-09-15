@@ -11,6 +11,7 @@ import { analyticsRouter } from './routes/analytics.js';
 import { healthRouter } from './routes/health.js';
 import { settingsRouter } from './routes/settings.js';
 import { rateLimitRouter } from './routes/rateLimits.js';
+import { agentRouter } from './routes/agent.js';
 import { createProxyRateLimiter } from './middleware/rateLimit.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -49,6 +50,7 @@ export function createApp() {
   app.use('/api/health', healthRouter);
   app.use('/api/settings', settingsRouter);
   app.use('/api/rate-limits', rateLimitRouter);
+  app.use('/api/agent', agentRouter);
 
   // Character brain — system prompt + quote/poetry/idea endpoints
   const characterRouter = express.Router();
@@ -126,7 +128,7 @@ Your motto: Plus Ultra — beyond the page, beyond the self.`,
   // ── Knowledge Base API ─────────────────────────────────────────────────────
   const kbRouter = express.Router();
   const KB_DIR = path.resolve(__dirname, '../../data/documents');
-  mkdirSync(KB_DIR, { recursive: true });
+  fs.mkdirSync(KB_DIR, { recursive: true });
 
   // List documents in KB
   kbRouter.get('/list', (_req, res) => {

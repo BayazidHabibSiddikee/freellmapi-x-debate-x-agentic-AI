@@ -12,12 +12,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import KeysPage from '@/pages/KeysPage'
 import UsagePage from '@/pages/UsagePage'
+import AgentPage from '@/pages/AgentPage'
 
 const queryClient = new QueryClient()
 
-const navItems = [
+const navItems: Array<{ to: string; label: string; external?: boolean }> = [
   { to: '/keys', label: 'Keys' },
   { to: '/usage', label: 'Usage' },
+  { to: '/agent', label: 'Agent' },
 ]
 
 function getPreferredDarkMode() {
@@ -146,6 +148,7 @@ function App() {
               <Route path="/" element={<Navigate to="/keys" replace />} />
               <Route path="/keys" element={<KeysPage />} />
               <Route path="/usage" element={<UsagePage />} />
+              <Route path="/agent" element={<AgentPage />} />
             </Routes>
           </main>
         </div>

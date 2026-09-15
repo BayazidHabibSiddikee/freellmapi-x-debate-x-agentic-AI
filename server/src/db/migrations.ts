@@ -46,7 +46,45 @@ export function migrateDbSchema(db: Database.Database) {
   migrateEmbeddingsV1(db);
   migrateQuirksV1(db);
   migrateMemoriesV1(db);
+  migrateAgentV1(db);
   ensureUnifiedKey(db);
+}
+
+/** Agentic layer: persistent sessions, per-session message history, and
+ *  cross-session agent memories (server-side, not provider-side). */
+function migrateAgentV1(db: Database.Database) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS agent_sessions (
+      id TEXT PRIMARY KEY,
+      title TEXT,
+      workdir TEXT NOT NULL,
+      model TEXT,
+      system_prompt TEXT,
+      max_turns INTEGER NOT NULL DEFAULT 10,
+      tool_allow TEXT,
+      tool_deny TEXT NOT NULL DEFAULT '[]',
+      shell_timeout_ms INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS agent_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL REFERENCES agent_sessions(id) ON DELETE CASCADE,
+      seq INTEGER NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL DEFAULT '',
+      tool_calls TEXT,
+      tool_call_id TEXT,
+      name TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_agent_messages_session ON agent_messages(session_id, seq);
+    CREATE TABLE IF NOT EXISTS agent_memories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      text TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
 }
 
 /** Phase 1 industry architecture: episodic colleague memories. */

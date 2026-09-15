@@ -3,16 +3,21 @@
   "version": "0.2.1",
   "private": true,
   "type": "module",
+  "bin": {
+    "agent-tui": "bin/agent-tui.mjs"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "agent": "node bin/agent-tui.mjs",
     "test": "vitest run --pool=forks --fileParallelism=false",
     "test:watch": "vitest",
     "export-catalog": "tsx src/scripts/export-catalog.ts"
   },
   "dependencies": {
     "@freellmapi/shared": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "better-sqlite3": "^12.10.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",

@@ -14,7 +14,7 @@
 // Also handles whole-arguments double encoding (the arguments field itself
 // being a JSON-encoded string of a JSON object), which needs no schema.
 
-interface JsonSchemaish {
+export interface JsonSchemaish {
   type?: string;
   properties?: Record<string, JsonSchemaish>;
 }
