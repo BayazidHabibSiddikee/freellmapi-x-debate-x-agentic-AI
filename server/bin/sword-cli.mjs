@@ -249,13 +249,27 @@ async function main() {
   );
   speak('Sword CLI ready', sessionVoice);
 
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: process.stdin.isTTY === true });
+  let stdinClosed = false;
+  rl.on('close', () => { stdinClosed = true; });
   const ask = () =>
-    new Promise((resolve) => rl.question(c.cyan('you > '), (a) => resolve(a.trim())));
+    new Promise((resolve) => {
+      if (stdinClosed) return resolve(null);
+      try {
+        rl.question(c.cyan('you > '), (a) => {
+          if (stdinClosed) resolve(null);
+          else resolve(a.trim());
+        });
+      } catch {
+        // readline already closed — treat as EOF.
+        resolve(null);
+      }
+    });
 
   let current = session;
   while (true) {
     const input = await ask();
+    if (stdinClosed || input === null) break;
     if (!input) continue;
 
     if (input === '/quit' || input === '/exit') break;
