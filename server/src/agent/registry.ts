@@ -2,6 +2,8 @@ import { fileTools } from './tools/file.js';
 import { shellTools } from './tools/shell.js';
 import { ragTools } from './tools/rag.js';
 import { memoryTools } from './tools/memory.js';
+import { videoTools } from './tools/video.js';
+import { voiceTools } from './tools/voice.js';
 import { mcpTools } from './mcp-client.js';
 import { repairToolArguments } from '../lib/tool-args.js';
 import type { AgentSchemaish, AgentSessionRow, AgentTool, ToolContext, ToolResult } from './types.js';
@@ -11,7 +13,7 @@ import { jsonList } from './types.js';
 export const MAX_TOOL_RESULT_CHARS = 20_000;
 
 export function builtinTools(): AgentTool[] {
-  return [...fileTools, ...shellTools, ...ragTools, ...memoryTools];
+  return [...fileTools, ...shellTools, ...ragTools, ...memoryTools, ...videoTools, ...voiceTools];
 }
 
 function isAllowed(name: string, allow: string[], deny: string[]): boolean {

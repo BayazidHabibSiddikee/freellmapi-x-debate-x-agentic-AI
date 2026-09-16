@@ -77,8 +77,15 @@ proxy traffic.
   (`registry.ts`), built-in tools (`tools/`: file, shell, rag, memory),
   MCP client (`mcp-client.ts`, config at `server/data/agent-mcp.json`).
 - `server/src/routes/agent.ts` — REST surface.
-- `server/bin/agent-tui.mjs` — interactive terminal client (`npm run agent`
-  in `server/`; env `FREELLMAPI_BASE_URL`, optional `FREELLMAPI_TOKEN`).
+- `server/bin/sword-cli.mjs` — interactive terminal client (`npm run sword`
+  or `npm run agent` in `server/`; env `SWORDCLI_BASE_URL` / `SWORDCLI_TOKEN`,
+  legacy `FREELLMAPI_BASE_URL` / `FREELLMAPI_TOKEN` still honored).
+- Voice: `server/src/agent/voice.ts` (espeak-ng TTS + paplay/aplay playback),
+  character×voice roster at `server/data/characters-voices.json`, persona
+  prompts joined from `data/characters.json` via `server/src/agent/characters.ts`.
+- Video: `server/src/agent/tools/video.ts` — structured `video_edit` tool
+  (make_test_video / probe / cut / concat / title / subtitles / extract_frames)
+  built on ffmpeg; commands are constructed internally, never free-form.
 - Dashboard: `client/src/pages/AgentPage.tsx` (sessions, live-streamed chat,
   settings incl. MCP server editor).
 

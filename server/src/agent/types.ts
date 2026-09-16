@@ -12,6 +12,8 @@ export interface AgentSessionRow {
   tool_allow: string | null; // JSON string[] | null
   tool_deny: string;         // JSON string[]
   shell_timeout_ms: number | null;
+  character: string | null;
+  voice: string;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +48,8 @@ export interface ToolContext {
   workdir: string;
   shellTimeoutMs: number;
   signal: AbortSignal;
+  /** espeak-ng voice id for the session's character (speak tool). */
+  voice?: string;
 }
 
 export interface ToolResult {
@@ -86,6 +90,8 @@ export interface AgentSessionConfig {
   toolAllow?: string[] | null;
   toolDeny?: string[];
   shellTimeoutMs?: number | null;
+  character?: string | null;
+  voice?: string;
 }
 
 export function jsonToolCalls(v: string | null): ChatToolCall[] | null {

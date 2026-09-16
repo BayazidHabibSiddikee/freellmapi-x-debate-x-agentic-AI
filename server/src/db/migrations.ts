@@ -47,6 +47,7 @@ export function migrateDbSchema(db: Database.Database) {
   migrateQuirksV1(db);
   migrateMemoriesV1(db);
   migrateAgentV1(db);
+  migrateAgentV2(db);
   ensureUnifiedKey(db);
 }
 
@@ -85,6 +86,17 @@ function migrateAgentV1(db: Database.Database) {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+}
+
+/** sword-cli: per-session character persona + TTS voice. */
+function migrateAgentV2(db: Database.Database) {
+  const cols = db.prepare("PRAGMA table_info(agent_sessions)").all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'character')) {
+    db.exec('ALTER TABLE agent_sessions ADD COLUMN character TEXT');
+  }
+  if (!cols.some((c) => c.name === 'voice')) {
+    db.exec("ALTER TABLE agent_sessions ADD COLUMN voice TEXT NOT NULL DEFAULT ''");
+  }
 }
 
 /** Phase 1 industry architecture: episodic colleague memories. */

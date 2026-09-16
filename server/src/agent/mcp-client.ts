@@ -88,7 +88,7 @@ async function ensureServer(cfg: McpServerConfig): Promise<void> {
   if (pending) return;
   pending = (async () => {
     try {
-      const client = new Client({ name: `freellmapi-agent:${cfg.name}`, version: '1.0.0' });
+      const client = new Client({ name: `sword-cli:${cfg.name}`, version: '1.0.0' });
       const env: Record<string, string> = Object.fromEntries(
         Object.entries(process.env).filter((e): e is [string, string] => e[1] !== undefined),
       );

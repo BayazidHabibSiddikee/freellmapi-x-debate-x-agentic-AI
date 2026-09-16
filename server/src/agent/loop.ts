@@ -9,6 +9,7 @@ import type { ChatMessage, ChatToolCall, ChatToolDefinition } from '@freellmapi/
 import { runLlmTurn, type AgentStreamEvent } from './llm.js';
 import { catalogForSession, findTool, executeToolCall, MAX_TOOL_RESULT_CHARS } from './registry.js';
 import { loadMemoryPromptBlock } from './tools/memory.js';
+import { characterSystemBlock, voiceForCharacter } from './characters.js';
 import {
   type AgentSessionRow, type AgentSseEvent, jsonToolCalls,
 } from './types.js';
@@ -63,16 +64,20 @@ export interface RunAgentTurnSummary {
   toolCalls: number;
 }
 
-/** Build the system prompt: session override or default + workdir + memory bank. */
+/** Build the system prompt: session override or default + character persona +
+ *  workdir + memory bank. */
 export function buildSystemPrompt(session: AgentSessionRow): string {
   const base = session.system_prompt?.trim() || DEFAULT_SYSTEM_PROMPT;
   const memory = loadMemoryPromptBlock();
+  const character = characterSystemBlock(session.character || null);
   return [
     base,
+    character,
     '',
     `## Environment`,
     `- Working directory: ${session.workdir}`,
     `- Max consecutive model turns: ${session.max_turns}`,
+    `- Voice: ${session.voice || 'en-gb'} (use the speak tool for notifications)`,
     memory ? '\n' + memory : '',
   ].join('\n');
 }
@@ -171,6 +176,7 @@ export async function runAgentTurn(opts: RunAgentTurnOptions): Promise<RunAgentT
     workdir: sessionRow.workdir,
     shellTimeoutMs: sessionRow.shell_timeout_ms ?? 0,
     signal,
+    voice: sessionRow.voice || voiceForCharacter(sessionRow.character)?.voice || 'en-gb',
   };
 
   const llm = opts.llm ?? defaultLlmRunner;

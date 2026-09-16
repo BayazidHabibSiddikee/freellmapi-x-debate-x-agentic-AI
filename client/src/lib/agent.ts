@@ -12,6 +12,8 @@ export interface AgentSession {
   tool_allow: string | null
   tool_deny: string
   shell_timeout_ms: number | null
+  character: string | null
+  voice: string
   created_at: string
   updated_at: string
   messageCount?: number
@@ -43,6 +45,19 @@ export interface AgentToolInfo {
   source: string
 }
 
+export interface AgentCharacter {
+  id: string
+  name: string
+  voice: string
+  hint: string
+  systemPrompt: string | null
+}
+
+export async function listCharacters(): Promise<AgentCharacter[]> {
+  return apiFetch<{ data: { characters: AgentCharacter[] } }>('/api/agent/characters')
+    .then((r) => r.data.characters)
+}
+
 // ---- Non-stream endpoints (JSON envelope) ----
 
 export async function listSessions(): Promise<{ sessions: AgentSession[]; total: number }> {
@@ -57,6 +72,8 @@ export async function createSession(body: {
   maxTurns?: number
   toolDeny?: string[]
   shellTimeoutMs?: number | null
+  character?: string | null
+  voice?: string
 }): Promise<AgentSession> {
   return apiFetch<{ data: AgentSession }>('/api/agent/sessions', { method: 'POST', body: JSON.stringify(body) })
     .then((r) => r.data)
@@ -77,6 +94,8 @@ export async function patchSession(
     maxTurns?: number
     toolDeny?: string[]
     shellTimeoutMs?: number | null
+    character?: string | null
+    voice?: string
   },
 ): Promise<AgentSession> {
   return apiFetch<{ data: AgentSession }>(`/api/agent/sessions/${id}`, { method: 'PATCH', body: JSON.stringify(body) })

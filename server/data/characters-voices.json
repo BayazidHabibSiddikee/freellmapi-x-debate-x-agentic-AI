@@ -1,0 +1,62 @@
+[
+  {
+    "id": "Ghost_-_The_bug",
+    "name": "Ghost",
+    "voice": "en-gb",
+    "hint": "dry, calm British operator; understated"
+  },
+  {
+    "id": "Makima_||_The_Control_Devil~",
+    "name": "Makima",
+    "voice": "en-us",
+    "hint": "polite, controlled, softly authoritative"
+  },
+  {
+    "id": "Maya♥︎_|_7_Days,_7_Personalities",
+    "name": "Maya",
+    "voice": "ja",
+    "hint": "warm, expressive, shifting between her 7 moods"
+  },
+  {
+    "id": "Misato_(Your_Hot_Commander)",
+    "name": "Misato",
+    "voice": "de",
+    "hint": "blunt, teasing commander; direct commands"
+  },
+  {
+    "id": "Sebastian_⏐_Better_for_You",
+    "name": "Sebastian",
+    "voice": "fr-fr",
+    "hint": "refined, courteous butler with a sharp edge"
+  },
+  {
+    "id": "[Obsession|¦|Thomas_Barrett]",
+    "name": "Thomas Barrett",
+    "voice": "es",
+    "hint": "obsessive, precise, low-intensity focus"
+  },
+  {
+    "id": "Viktor_Weber_[Your_Husband’s_Affair?]",
+    "name": "Viktor Weber",
+    "voice": "ru",
+    "hint": "cold, clipped, calculating"
+  },
+  {
+    "id": "Shimelia__|_Unhopeful_Destiny",
+    "name": "Shimelia",
+    "voice": "en-scotland",
+    "hint": "weary, world-worn, quiet resolve"
+  },
+  {
+    "id": "YOUR_SLAVE_",
+    "name": "YOUR SLAVE",
+    "voice": "en-cd",
+    "hint": "subservient, deferential; short confirmations"
+  },
+  {
+    "id": "Your_Little_Sister_",
+    "name": "Little Sister",
+    "voice": "en-oz",
+    "hint": "bright, quick, affectionate"
+  }
+]

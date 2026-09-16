@@ -13,7 +13,7 @@ import {
 import type { AgentSession, AgentSseEvent, AgentMcpServer, AgentStreamHandle } from '@/lib/agent'
 import {
   listSessions, createSession, getSession, patchSession, deleteSession,
-  getMcpConfig, putMcpConfig, reloadMcp, streamMessage, listTools,
+  getMcpConfig, putMcpConfig, reloadMcp, streamMessage, listTools, listCharacters,
 } from '@/lib/agent'
 
 // ---- Chat transcript state ----
@@ -132,6 +132,12 @@ export default function AgentPage() {
     queryFn: () => listTools(selectedId ?? undefined),
     enabled: !!selectedId,
   })
+
+  const { data: charactersData } = useQuery({
+    queryKey: ['agent', 'characters'],
+    queryFn: listCharacters,
+  })
+  const characters = charactersData ?? []
 
   const createMut = useMutation({
     mutationFn: (body: Parameters<typeof createSession>[0]) => createSession(body),
@@ -304,7 +310,7 @@ export default function AgentPage() {
 
         {/* ---- Chat ---- */}
         <div className="space-y-4 min-w-0">
-          {showNew && <NewSessionForm onCreate={(wd, body) => createMut.mutate({ workdir: wd, ...body })} onClose={() => setShowNew(false)} busy={createMut.isPending} models={models} />}
+          {showNew && <NewSessionForm onCreate={(wd, body) => createMut.mutate({ workdir: wd, ...body })} onClose={() => setShowNew(false)} busy={createMut.isPending} models={models} characters={characters} />}
 
           {showSettings && session && (
             <SessionSettings
@@ -325,7 +331,7 @@ export default function AgentPage() {
             <div className="px-4 py-2 border-b flex items-center gap-2">
               <Terminal className="size-3.5 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">
-                {session ? `${session.workdir} · ${session.model ?? 'auto'} · ${session.max_turns} max turns` : 'Select or create a session'}
+                {session ? `${session.workdir} · ${session.model ?? 'auto'} · ${session.max_turns} max turns${session.character ? ` · 👤 ${session.character}` : ''}` : 'Select or create a session'}
               </span>
               {streaming && <Badge className="ml-auto"><Loader2 className="size-3 animate-spin mr-1" /> running</Badge>}
             </div>
@@ -400,18 +406,27 @@ export default function AgentPage() {
 // ---- New session form ----
 
 function NewSessionForm({
-  onCreate, onClose, busy, models,
+  onCreate, onClose, busy, models, characters,
 }: {
-  onCreate: (workdir: string, body: { title?: string; model?: string | null; maxTurns?: number; systemPrompt?: string | null }) => void
+  onCreate: (workdir: string, body: {
+    title?: string
+    model?: string | null
+    maxTurns?: number
+    systemPrompt?: string | null
+    character?: string | null
+    voice?: string
+  }) => void
   onClose: () => void
   busy: boolean
   models: { modelId: string; displayName: string; platform: string }[]
+  characters: { id: string; name: string; voice: string; hint: string }[]
 }) {
   const [workdir, setWorkdir] = useState('')
   const [title, setTitle] = useState('')
   const [model, setModel] = useState('')
   const [maxTurns, setMaxTurns] = useState(10)
   const [systemPrompt, setSystemPrompt] = useState('')
+  const [character, setCharacter] = useState('')
   return (
     <div className="rounded-3xl border bg-card p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -438,6 +453,15 @@ function NewSessionForm({
             {models.map((m) => <option key={m.modelId} value={m.modelId}>{m.displayName}</option>)}
           </datalist>
         </div>
+        <div className="space-y-1 sm:col-span-2">
+          <Label>Character (persona + voice)</Label>
+          <select className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" value={character} onChange={(e) => setCharacter(e.target.value)}>
+            <option value="">none (default agent)</option>
+            {characters.map((ch) => (
+              <option key={ch.id} value={ch.id}>{ch.name} — {ch.hint} ({ch.voice})</option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="space-y-1">
         <Label>System prompt override (optional)</Label>
@@ -445,13 +469,17 @@ function NewSessionForm({
       </div>
       <div className="flex justify-end">
         <Button
-          onClick={() =>
+          onClick={() => {
+            const ch = characters.find((x) => x.id === character)
             onCreate(workdir.trim() || '.', {
               title: title.trim() || undefined,
               model: model.trim() || null,
               maxTurns,
               systemPrompt: systemPrompt.trim() || null,
+              character: character || null,
+              ...(ch ? { voice: ch.voice } : {}),
             })
+          }
           }
           disabled={busy || !workdir.trim()}
         >

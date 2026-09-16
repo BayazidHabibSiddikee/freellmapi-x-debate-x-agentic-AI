@@ -16,6 +16,8 @@ import { z } from 'zod';
 import { getDb } from '../db/index.js';
 import { sendOk, sendError } from '../lib/envelope.js';
 import { runAgentTurn } from '../agent/loop.js';
+import { characterRoster } from '../agent/characters.js';
+import { speak } from '../agent/voice.js';
 import { catalogForSession } from '../agent/registry.js';
 import { loadMcpConfig, saveMcpConfig, closeAllMcpClients, mcpConfigPath, type McpConfig } from '../agent/mcp-client.js';
 import type { AgentSessionRow } from '../agent/types.js';
@@ -34,6 +36,8 @@ const sessionCreateSchema = z.object({
   toolAllow: z.array(z.string()).nullable().optional(),
   toolDeny: z.array(z.string()).optional(),
   shellTimeoutMs: z.number().int().positive().nullable().optional(),
+  character: stringOrNull,
+  voice: z.string().optional(),
 });
 
 const sessionPatchSchema = z.object({
@@ -45,6 +49,8 @@ const sessionPatchSchema = z.object({
   toolAllow: z.array(z.string()).nullable().optional(),
   toolDeny: z.array(z.string()).optional(),
   shellTimeoutMs: z.number().int().positive().nullable().optional(),
+  character: stringOrNull,
+  voice: z.string().optional(),
 });
 
 function resolveWorkdir(input: string): string {
@@ -80,8 +86,8 @@ agentRouter.post('/sessions', (req: Request, res: Response) => {
 
   const insert = getDb().prepare(`
     INSERT INTO agent_sessions
-      (id, title, workdir, model, system_prompt, max_turns, tool_allow, tool_deny, shell_timeout_ms)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, title, workdir, model, system_prompt, max_turns, tool_allow, tool_deny, shell_timeout_ms, character, voice)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   try {
     insert.run(
@@ -94,6 +100,8 @@ agentRouter.post('/sessions', (req: Request, res: Response) => {
       data.toolAllow ? JSON.stringify(data.toolAllow) : null,
       JSON.stringify(data.toolDeny ?? []),
       data.shellTimeoutMs ?? null,
+      data.character ?? null,
+      data.voice ?? '',
     );
   } catch (err) {
     sendError(res, 500, (err as Error).message, { retryable: true, hint: 'Database write failed' });
@@ -149,6 +157,8 @@ agentRouter.patch('/sessions/:id', (req: Request, res: Response) => {
   if (data.toolAllow !== undefined) { updates.push('tool_allow = ?'); values.push(data.toolAllow ? JSON.stringify(data.toolAllow) : null); }
   if (data.toolDeny !== undefined) { updates.push('tool_deny = ?'); values.push(JSON.stringify(data.toolDeny)); }
   if (data.shellTimeoutMs !== undefined) { updates.push('shell_timeout_ms = ?'); values.push(data.shellTimeoutMs); }
+  if (data.character !== undefined) { updates.push('character = ?'); values.push(data.character); }
+  if (data.voice !== undefined) { updates.push('voice = ?'); values.push(data.voice); }
 
   if (updates.length > 0) {
     updates.push("updated_at = datetime('now')");
@@ -224,6 +234,24 @@ agentRouter.get('/tools', (req: Request, res: Response) => {
       source: t.source,
     }));
   sendOk(res, { tools });
+});
+
+// ---- Character roster -----------------------------------------------------
+
+agentRouter.get('/characters', (_req: Request, res: Response) => {
+  sendOk(res, { characters: characterRoster() });
+});
+
+agentRouter.post('/voice', async (req: Request, res: Response) => {
+  const text = typeof req.body?.text === 'string' ? req.body.text : '';
+  if (!text.trim()) {
+    sendError(res, 400, '"text" is required');
+    return;
+  }
+  const voice = typeof req.body?.voice === 'string' ? req.body.voice : 'en-gb';
+  const say = req.body?.say !== false;
+  const result = await speak(text.slice(0, 400), voice, { say });
+  sendOk(res, { ...result });
 });
 
 // ---- MCP config -----------------------------------------------------------

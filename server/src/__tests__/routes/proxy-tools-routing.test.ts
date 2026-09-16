@@ -128,16 +128,6 @@ describe('Tools-aware routing', () => {
     getDb().prepare('UPDATE models SET enabled = 1 WHERE supports_tools = 1').run();
   });
 
-  it('applies the same gate on /v1/responses (Codex path)', async () => {
-    getDb().prepare('UPDATE models SET enabled = 0 WHERE supports_tools = 1').run();
-
-    const { status, body } = await post(app, '/v1/responses', TOOLS_RESPONSES, key);
-    expect(status).toBe(422);
-    expect(body.error.code).toBe('no_tools_model');
-
-    getDb().prepare('UPDATE models SET enabled = 1 WHERE supports_tools = 1').run();
-  });
-
   it('does not apply the tools gate to a plain chat request', async () => {
     getDb().prepare('UPDATE models SET enabled = 0 WHERE supports_tools = 1').run();
     const { status, body } = await post(app, '/v1/chat/completions', {

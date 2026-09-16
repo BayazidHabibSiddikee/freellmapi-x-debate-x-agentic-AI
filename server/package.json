@@ -4,16 +4,17 @@
   "private": true,
   "type": "module",
   "bin": {
-    "agent-tui": "bin/agent-tui.mjs"
+    "sword-cli": "bin/sword-cli.mjs"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "agent": "node bin/agent-tui.mjs",
+    "agent": "node bin/sword-cli.mjs",
     "test": "vitest run --pool=forks --fileParallelism=false",
     "test:watch": "vitest",
-    "export-catalog": "tsx src/scripts/export-catalog.ts"
+    "export-catalog": "tsx src/scripts/export-catalog.ts",
+    "sword": "node bin/sword-cli.mjs"
   },
   "dependencies": {
     "@freellmapi/shared": "*",
@@ -21,7 +22,6 @@
     "better-sqlite3": "^12.10.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.44.2",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "zod": "^3.24.4"
@@ -31,7 +31,6 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.2",
     "@types/node": "^22.15.3",
-    "drizzle-kit": "^0.31.1",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.3"
