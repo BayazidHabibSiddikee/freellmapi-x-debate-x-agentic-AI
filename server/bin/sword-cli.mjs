@@ -347,7 +347,11 @@ async function main() {
     } catch (err) {
       console.log(c.red(`error: ${err.message}`));
       if (/fetch failed|ECONNREFUSED/.test(err.message)) {
-        console.log(c.dim(`Is the server running at ${BASE}? (start: npm run dev in server/)`));
+        console.log(c.dim(`Is the server running at ${BASE}? (start: cd freellmapi/server && npm run dev, or pass SWORDCLI_BASE_URL)`));
+      }
+      if (err.message?.includes('404')) {
+        console.log(c.dim(`That server at ${BASE} doesn't have /api/agent routes — it's likely a stale dev server.`));
+        console.log(c.dim(`Find it with: ss -ltnp | grep 3001  →  kill <pid>, then restart: cd freellmapi/server && npm run dev`));
       }
     }
   }
@@ -355,6 +359,11 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(c.red(String(err?.message ?? err)));
+  const msg = String(err?.message ?? err);
+  console.error(c.red(msg));
+  if (msg.includes('404')) {
+    console.error(c.dim(`That server at ${BASE} doesn't have /api/agent routes — it's likely a stale dev server.`));
+    console.error(c.dim(`Find it: ss -ltnp | grep 3001 → kill <pid>, then restart: cd freellmapi/server && npm run dev`));
+  }
   process.exit(1);
 });
