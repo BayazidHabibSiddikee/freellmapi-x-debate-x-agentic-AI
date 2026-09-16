@@ -206,7 +206,12 @@ agentRouter.post('/sessions/:id/messages', async (req: Request, res: Response) =
   };
 
   const abort = new AbortController();
-  req.on('close', () => abort.abort());
+  // NOTE: req 'close' fires as soon as the request BODY is consumed (Node 16+),
+  // which would abort every turn immediately — the disconnect signal is the
+  // RESPONSE closing early.
+  res.on('close', () => {
+    if (!res.writableEnded) abort.abort();
+  });
 
   await runAgentTurn({
     session,
