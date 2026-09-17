@@ -7,11 +7,13 @@ import { fileURLToPath } from 'url';
 import { keysRouter } from './routes/keys.js';
 import { modelsRouter } from './routes/models.js';
 import { proxyRouter } from './routes/proxy.js';
+import { responsesRouter } from './routes/responses.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { healthRouter } from './routes/health.js';
 import { settingsRouter } from './routes/settings.js';
 import { rateLimitRouter } from './routes/rateLimits.js';
 import { agentRouter } from './routes/agent.js';
+import { swordRouter } from './routes/sword.js';
 import { createProxyRateLimiter } from './middleware/rateLimit.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -51,6 +53,7 @@ export function createApp() {
   app.use('/api/settings', settingsRouter);
   app.use('/api/rate-limits', rateLimitRouter);
   app.use('/api/agent', agentRouter);
+  app.use('/api/sword', swordRouter);
 
   // Character brain — system prompt + quote/poetry/idea endpoints
   const characterRouter = express.Router();
@@ -179,6 +182,9 @@ Your motto: Plus Ultra — beyond the page, beyond the self.`,
   // ── OpenAI-compatible proxy ────────────────────────────────────────────────
   app.use('/v1', createProxyRateLimiter());
   app.use('/v1', proxyRouter);
+  // OpenAI Responses API shim (Codex CLI requires wire_api="responses"). Was
+  // dropped in the 637deb2 slimming while the README still advertised it.
+  app.use('/v1', responsesRouter);
 
   // Health ping
   app.get('/api/ping', (_req, res) => {

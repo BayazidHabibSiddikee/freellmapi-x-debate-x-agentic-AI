@@ -43,6 +43,32 @@ NEVER stage or commit:
 All are gitignored; verify with `git status --short` before committing and
 confirm none of the above appear.
 
+## SwordCLI — shared sessions, memory and the web UI
+
+SwordCLI is the agent surface layered on this proxy. It is **local single-user**:
+keep the process bound to loopback (`HOST=127.0.0.1`), because legacy `/api/*`
+admin routes (including unified-key retrieval) remain unauthenticated.
+
+- `server/src/routes/sword.ts` — `/api/sword/*`, authenticated with the unified
+  API key (timing-safe compare) and rate-limited. It stores chat history in the
+  shared sessions table and **never executes tools**: web chat is text-only.
+  `server/src/services/sword-memory.ts` owns storage, optimistic revisions and
+  SQLite FTS5 retrieval (lexical, not embeddings).
+- CLI side lives in the parent repo: `character-flow/character-flow/cli/`.
+  `--shared` sessions (the default for `npm run sword`) are visible on the web.
+  File edits and commands stay approval-gated in the terminal.
+- Memory is injected as a **system** message inside `<workspace-memory>` tags and
+  is explicitly untrusted. Never inject retrieved history as a `user` turn: a
+  leftover prompt stored in an old session once hijacked a later turn.
+- Model choice: `--model` → `SWORD_MODEL` → strongest advertised model → `auto`.
+  The default `balanced` routing strategy serves weak models
+  (`gemini-3.5-flash-lite`, `glm-4.7-flash`), which produced broken code, so the
+  CLI prefers a rank-2 model when one is available.
+- `POST /v1/responses` was deleted in `637deb2` ("slim to keys/proxy/health")
+  while the README still advertised it; it is restored and mounted in `app.ts`.
+  Its tests came back from `b114f2f^`. Do not remove it without updating both
+  the README and `client/src/pages/KeysPage.tsx`.
+
 ## Push targets
 
 The canonical GitHub home is

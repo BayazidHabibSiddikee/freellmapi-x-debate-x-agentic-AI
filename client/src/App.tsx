@@ -12,11 +12,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import KeysPage from '@/pages/KeysPage'
 import UsagePage from '@/pages/UsagePage'
+import SwordPage from '@/pages/SwordPage'
 import AgentPage from '@/pages/AgentPage'
 
 const queryClient = new QueryClient()
 
 const navItems: Array<{ to: string; label: string; external?: boolean }> = [
+  { to: '/sword', label: 'SwordCLI' },
   { to: '/keys', label: 'Keys' },
   { to: '/usage', label: 'Usage' },
   { to: '/agent', label: 'Agent' },
@@ -77,9 +79,9 @@ function DarkModeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => voi
 
 function Brand() {
   return (
-    <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-70">
+    <Link to="/sword" className="flex items-center gap-2 transition-opacity hover:opacity-70">
       <span className="inline-block size-2 rounded-full bg-foreground" />
-      <span className="font-semibold tracking-tight text-sm">FreeLLMAPI</span>
+      <span className="font-semibold tracking-tight text-sm">SwordCLI</span>
     </Link>
   )
 }
@@ -145,7 +147,8 @@ function App() {
           <Navbar />
           <main className="max-w-6xl mx-auto px-6 py-8">
             <Routes>
-              <Route path="/" element={<Navigate to="/keys" replace />} />
+              <Route path="/" element={<Navigate to="/sword" replace />} />
+              <Route path="/sword" element={<SwordPage />} />
               <Route path="/keys" element={<KeysPage />} />
               <Route path="/usage" element={<UsagePage />} />
               <Route path="/agent" element={<AgentPage />} />
