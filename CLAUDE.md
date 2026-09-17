@@ -78,3 +78,15 @@ project was built from; it is read-only for you (403 on push) and must never
 receive pushes or PRs. Before pushing, fetch that combined repo's `main`
 first — it can contain newer work than any local checkout; verify local files
 are a superset/additive diff before overwriting anything.
+
+**History layout (as of 2026-09-17):** canonical `main` is NOT an ancestor of
+the local `sword-cli` line — it was rebased/reconstructed on a different base
+(`6822538`, which `b114f2f..c0734b4` never had) and its tip `969dc8e` contains
+work the local line still lacks: `/api/*` admin routes re-gated behind
+`requireAuth`, `FREELLMAPI_NO_AUTH` opt-out (`server/src/lib/noAuth.ts`),
+`/api/auth` mounting, and removal of the Playground/Embeddings/Premium pages.
+Do NOT force-push `main`; the local branch is published as `sword-cli`. To
+reunite the lines: `git fetch origin && git merge origin/main` (or rebase)
+locally, resolve conflicts in `server/src/app.ts` (responses + sword mounts vs
+auth re-gating) and `client/src/App.tsx` (SwordPage route vs page removals),
+run the server suite, then fast-forward `main`.
